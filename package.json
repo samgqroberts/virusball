@@ -1,0 +1,24 @@
+{
+  "name": "virusball",
+  "version": "0.1.0",
+  "description": "a successor to supervirus: now with balls!",
+  "main": "./src/index.ts",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "start": "webpack-dev-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samgqroberts/virusball.git"
+  },
+  "author": "Sam Roberts <samgqroberts@gmail.com>",
+  "dependencies": {},
+  "devDependencies": {
+    "copy-webpack-plugin": "^5.0.0",
+    "ts-loader": "^6.2.1",
+    "typescript": "^3.7.4",
+    "webpack": "^4.29.3",
+    "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.1.5"
+  }
+}
