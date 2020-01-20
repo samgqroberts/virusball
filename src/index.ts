@@ -1,4 +1,5 @@
 import { mat4 } from "gl-matrix";
+import * as PressedKeys from './PressedKeys';
 
 const canvasId = 'canvas';
 
@@ -7,15 +8,15 @@ if (!canvas) {
   throw new Error(`Could not find canvas, using id: '${canvasId}'`);
 }
 
-const gl = canvas.getContext('webgl');
-if (!gl) {
+const globalGL = canvas.getContext('webgl');
+if (!globalGL) {
   throw new Error(`Could not get webgl context from canvas`);
 }
 
 // Set clear color to black, fully opaque
-gl.clearColor(0.0, 0.0, 0.0, 1.0);
+globalGL.clearColor(0.0, 0.0, 0.0, 1.0);
 // Clear the color buffer with specified clear color
-gl.clear(gl.COLOR_BUFFER_BIT);
+globalGL.clear(globalGL.COLOR_BUFFER_BIT);
 
 const vsSource = `
   attribute vec4 aVertexPosition;
@@ -79,25 +80,29 @@ function loadShader(gl: WebGLRenderingContext, type: GLenum, source: string) {
   return shader;
 }
 
-const shaderProgram = initShaderProgram(gl, vsSource, fsSource)
+const shaderProgram = initShaderProgram(globalGL, vsSource, fsSource)
   || (() => { throw new Error('could not initShaderProgram'); })();
 
 const programInfo = {
   program: shaderProgram,
   attribLocations: {
-    vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+    vertexPosition: globalGL.getAttribLocation(shaderProgram, 'aVertexPosition'),
   },
   uniformLocations: {
-    projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-    modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+    projectionMatrix: globalGL.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+    modelViewMatrix: globalGL.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
   },
 };
 
-function initBuffers(gl: WebGLRenderingContext) {
+interface AppBuffers {
+  position: WebGLBuffer
+}
+function initBuffers(gl: WebGLRenderingContext): AppBuffers {
 
   // Create a buffer for the square's positions.
 
-  const positionBuffer = gl.createBuffer();
+  const positionBuffer = gl.createBuffer()
+    || (() => { throw new Error('could not create buffer'); })();
 
   // Select the positionBuffer as the one to apply buffer
   // operations to from here out.
@@ -130,8 +135,9 @@ let squareRotation = 0.0;
 function drawScene(
   gl: WebGLRenderingContext,
   pInfo: typeof programInfo,
-  buffers: any,
-  deltaTime: number
+  buffers: AppBuffers,
+  deltaTime: number,
+  positionCorrectionX: number
 ) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
@@ -159,10 +165,10 @@ function drawScene(
   // note: gl-matrix.js always has the first argument
   // as the destination to receive the result.
   mat4.perspective(projectionMatrix,
-                   fieldOfView,
-                   aspect,
-                   zNear,
-                   zFar);
+    fieldOfView,
+    aspect,
+    zNear,
+    zFar);
 
   // Set the drawing position to the "identity" point, which is
   // the center of the scene.
@@ -172,13 +178,13 @@ function drawScene(
   // start drawing the square.
 
   mat4.translate(modelViewMatrix,     // destination matrix
-                 modelViewMatrix,     // matrix to translate
-                 [-0.0, 0.0, -6.0]);  // amount to translate
+    modelViewMatrix,     // matrix to translate
+    [-0.0 + positionCorrectionX, 0.0, -6.0]);  // amount to translate
   squareRotation += deltaTime;
   mat4.rotate(modelViewMatrix,  // destination matrix
-              modelViewMatrix,  // matrix to rotate
-              squareRotation,   // amount to rotate in radians
-              [0, 0, 1]);       // axis to rotate around
+    modelViewMatrix,  // matrix to rotate
+    squareRotation,   // amount to rotate in radians
+    [0, 0, 1]);       // axis to rotate around
 
   // Tell WebGL how to pull out the positions from the position
   // buffer into the vertexPosition attribute.
@@ -191,14 +197,14 @@ function drawScene(
     const offset = 0;         // how many bytes inside the buffer to start from
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
     gl.vertexAttribPointer(
-        pInfo.attribLocations.vertexPosition,
-        numComponents,
-        type,
-        normalize,
-        stride,
-        offset);
+      pInfo.attribLocations.vertexPosition,
+      numComponents,
+      type,
+      normalize,
+      stride,
+      offset);
     gl.enableVertexAttribArray(
-        pInfo.attribLocations.vertexPosition);
+      pInfo.attribLocations.vertexPosition);
   }
 
   // Tell WebGL to use our program when drawing
@@ -208,13 +214,13 @@ function drawScene(
   // Set the shader uniforms
 
   gl.uniformMatrix4fv(
-      pInfo.uniformLocations.projectionMatrix,
-      false,
-      projectionMatrix);
+    pInfo.uniformLocations.projectionMatrix,
+    false,
+    projectionMatrix);
   gl.uniformMatrix4fv(
-      pInfo.uniformLocations.modelViewMatrix,
-      false,
-      modelViewMatrix);
+    pInfo.uniformLocations.modelViewMatrix,
+    false,
+    modelViewMatrix);
 
   {
     const offset = 0;
@@ -223,18 +229,27 @@ function drawScene(
   }
 }
 
-const buffers = initBuffers(gl);
+const buffers = initBuffers(globalGL);
 
 let then = 0;
 
+let positionCorrectionX = 0;
+
 // Draw the scene repeatedly
-function render(gl: WebGLRenderingContext, now: number) {
+function tick(gl: WebGLRenderingContext, now: number) {
   now *= 0.001;  // convert to seconds
   const deltaTime = now - then;
   then = now;
 
-  drawScene(gl, programInfo, buffers, deltaTime);
+  const keys = PressedKeys.capture();
+  if (keys.isPressed('a')) {
+    positionCorrectionX -= 1;
+  } else if (keys.isPressed('d')) {
+    positionCorrectionX += 1;
+  }
 
-  requestAnimationFrame((now: number) => render(gl, now));
+  drawScene(gl, programInfo, buffers, deltaTime, positionCorrectionX);
+
+  requestAnimationFrame((now: number) => tick(gl, now));
 }
-requestAnimationFrame((now: number) => render(gl, now));
+requestAnimationFrame((now: number) => tick(globalGL, now));

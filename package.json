@@ -14,7 +14,9 @@
   "author": "Sam Roberts <samgqroberts@gmail.com>",
   "dependencies": {
     "@types/gl-matrix": "^2.4.5",
-    "gl-matrix": "^3.1.0"
+    "@types/lodash": "^4.14.149",
+    "gl-matrix": "^3.1.0",
+    "lodash": "^4.17.15"
   },
   "devDependencies": {
     "copy-webpack-plugin": "^5.0.0",
