@@ -1,5 +1,6 @@
 import { mat4 } from "gl-matrix";
 import * as PressedKeys from './PressedKeys';
+import config from './config';
 
 const canvasId = 'canvas';
 
@@ -235,8 +236,20 @@ let then = 0;
 
 let positionCorrectionX = 0;
 
+let frameCount = 0;
+
+if (config.LOG_FPS) {
+  let previousFrameCount = 0;
+  setInterval(() => {
+    console.log('frames in the past second:', frameCount - previousFrameCount);
+    previousFrameCount = frameCount;
+  }, 1000);
+}
+
 // Draw the scene repeatedly
 function tick(gl: WebGLRenderingContext, now: number) {
+  frameCount++;
+
   now *= 0.001;  // convert to seconds
   const deltaTime = now - then;
   then = now;
