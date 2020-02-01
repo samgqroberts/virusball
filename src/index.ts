@@ -50,6 +50,7 @@ const circleFsSource = `
   }
 `;
 
+// So this is type script!
 function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
   const vertexShader = loadShaderOrFail(gl, gl.VERTEX_SHADER, vsSource);
   const fragmentShader = loadShaderOrFail(gl, gl.FRAGMENT_SHADER, fsSource);
@@ -66,7 +67,8 @@ function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, fsSource
 
   if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
     alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
-    return null;
+    return null; // So this function is `-> Program | null`
+    // And when this is called, we use the null case to throw an error?
   }
 
   return shaderProgram;
@@ -93,6 +95,7 @@ function loadShader(gl: WebGLRenderingContext, type: GLenum, source: string) {
   return shader;
 }
 
+// Very much like this.
 function loadShaderOrFail(gl: WebGLRenderingContext, type: GLenum, source: string) {
   return loadShader(gl, type, source)
     || (() => {
@@ -146,10 +149,10 @@ function initTutorialSquareBuffers(gl: WebGLRenderingContext): TutorialSquareBuf
   // Now create an array of positions for the square.
 
   const positions = [
-    -1.0,  1.0,
-     1.0,  1.0,
+    -1.0, 1.0,
+    1.0, 1.0,
     -1.0, -1.0,
-     1.0, -1.0,
+    1.0, -1.0,
   ];
 
   // Now pass the list of positions into WebGL to build the
@@ -157,13 +160,14 @@ function initTutorialSquareBuffers(gl: WebGLRenderingContext): TutorialSquareBuf
   // JavaScript array, then use it to fill the current buffer.
 
   gl.bufferData(gl.ARRAY_BUFFER,
-                new Float32Array(positions),
-                gl.STATIC_DRAW);
+    new Float32Array(positions),
+    gl.STATIC_DRAW);
 
   return {
     position: positionBuffer,
   };
 }
+// This is a spooky fxn. vIntimidating
 function initCircleBuffers(
   gl: WebGLRenderingContext,
   pInfo: typeof circleProgramInfo,
@@ -173,7 +177,7 @@ function initCircleBuffers(
   const vertexBuffer = gl.createBuffer();
   let vertices: number[] = [];
   const vertCount = 2;
-  for (var i=0.0; i<=330; i+=1) {
+  for (var i = 0.0; i <= 330; i += 1) {
     // degrees to radians
     var j = i * Math.PI / 180;
     // X Y Z
@@ -246,7 +250,7 @@ function drawTutorialSquare(
     const type = gl.FLOAT;    // the data in the buffer is 32bit floats
     const normalize = false;  // don't normalize
     const stride = 0;         // how many bytes to get from one set of values to the next
-                              // 0 = use type and numComponents above
+    // 0 = use type and numComponents above
     const offset = 0;         // how many bytes inside the buffer to start from
     gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
     gl.vertexAttribPointer(
@@ -378,6 +382,7 @@ function tick(gl: WebGLRenderingContext, now: number) {
   then = now;
 
   const keys = PressedKeys.capture();
+  // WOWOWO THis works! very hype!
   if (keys.isPressed('a')) {
     tutorialSquarePositionCorrectionX -= 1;
   } else if (keys.isPressed('d')) {
@@ -388,4 +393,5 @@ function tick(gl: WebGLRenderingContext, now: number) {
 
   requestAnimationFrame((now: number) => tick(gl, now));
 }
+// You call it once and then `tick` calls this recursively?
 requestAnimationFrame((now: number) => tick(globalGL, now));

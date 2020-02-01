@@ -9,9 +9,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/samgqroberts/virusball.git"
+    "url": "git+https://github.com/samgqroberts/virusball.git",
+    "cool": "^ didn't know you could do that"
   },
   "author": "Sam Roberts <samgqroberts@gmail.com>",
+  "thought": "what a wonderfully short list of deps. Love the incline css for simplicity",
   "dependencies": {
     "@types/gl-matrix": "^2.4.5",
     "@types/lodash": "^4.14.149",
