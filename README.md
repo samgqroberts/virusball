@@ -18,3 +18,7 @@ That education has so far consisted of these tutorials:
 And then, after a few hours unsuccessfully trying to force an oval into circular proportions, I went back to fundamentals and tried to gain broad familiarity in WebGL as a whole (helped a lot!):
 
 * https://www.tutorialspoint.com/webgl/index.htm
+
+Inspiring the move to more simple 2D operations rather than the more complex matrix operations from the first tutorial:
+
+* https://webglfundamentals.org/webgl/lessons/webgl-fundamentals.html
