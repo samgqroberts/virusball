@@ -1,77 +1,12 @@
 import * as PressedKeys from './PressedKeys';
 import config from './config';
-
 // @ts-ignore
 import circleVsSource from './circle_vertex.glsl';
 // @ts-ignore
 import circleFsSource from './circle_fragment.glsl';
+import { getWebglContext, initShaderProgramOrFail } from "./WebglUtils";
 
-const canvasId = 'canvas';
-
-const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
-if (!canvas) {
-  throw new Error(`Could not find canvas, using id: '${canvasId}'`);
-}
-
-const globalGL = canvas.getContext('webgl');
-if (!globalGL) {
-  throw new Error(`Could not get webgl context from canvas`);
-}
-
-function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
-  const vertexShader = loadShaderOrFail(gl, gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = loadShaderOrFail(gl, gl.FRAGMENT_SHADER, fsSource);
-
-  // Create the shader program
-
-  const shaderProgram = gl.createProgram()
-    || (() => { throw new Error(`could not create shader program`); })();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
-
-  // If creating the shader program failed, alert
-
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
-    return null;
-  }
-
-  return shaderProgram;
-}
-function loadShader(gl: WebGLRenderingContext, type: GLenum, source: string) {
-  const shader = gl.createShader(type) || (() => { throw new Error(`could not create shader of type ${type}`); })();
-
-  // Send the source to the shader object
-
-  gl.shaderSource(shader, source);
-
-  // Compile the shader program
-
-  gl.compileShader(shader);
-
-  // See if it compiled successfully
-
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
-    return null;
-  }
-
-  return shader;
-}
-
-function loadShaderOrFail(gl: WebGLRenderingContext, type: GLenum, source: string) {
-  return loadShader(gl, type, source)
-    || (() => {
-      throw new Error('could not create shader');
-    })();
-}
-
-function initShaderProgramOrFail(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
-  return initShaderProgram(gl, vsSource, fsSource)
-    || (() => { throw new Error('could not initShaderProgram'); })();
-}
+const globalGL = getWebglContext('canvas');
 
 const circleProgram = initShaderProgramOrFail(globalGL, circleVsSource, circleFsSource);
 
