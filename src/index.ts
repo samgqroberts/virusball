@@ -1,4 +1,3 @@
-import { mat4 } from "gl-matrix";
 import * as PressedKeys from './PressedKeys';
 import config from './config';
 
@@ -14,19 +13,15 @@ if (!globalGL) {
   throw new Error(`Could not get webgl context from canvas`);
 }
 
-// Set clear color to black, fully opaque
-globalGL.clearColor(0.0, 0.0, 0.0, 1.0);
-// Clear the color buffer with specified clear color
-globalGL.clear(globalGL.COLOR_BUFFER_BIT);
-
 const circleVsSource = `
-  attribute vec4 aPosition;
+  attribute vec2 aPosition;
   
-  uniform mat4 uModelViewMatrix;
-  uniform mat4 uProjectionMatrix;
+  uniform vec2 uScaleVector;
 
   void main() {
-    gl_Position = uProjectionMatrix * uModelViewMatrix * aPosition;
+    // simply scale the position by the scale vector.
+    // vector scaling is done via multiplication.
+    gl_Position = vec4(uScaleVector * aPosition, 0, 1);
   }
 `;
 
@@ -99,8 +94,7 @@ const circleProgramInfo = {
     vertexPosition: globalGL.getAttribLocation(circleProgram, 'aPosition'),
   },
   uniformLocations: {
-    projectionMatrix: globalGL.getUniformLocation(circleProgram, 'uProjectionMatrix'),
-    modelViewMatrix: globalGL.getUniformLocation(circleProgram, 'uModelViewMatrix'),
+    scaleVector: globalGL.getUniformLocation(circleProgram, 'uScaleVector'),
   },
 };
 
@@ -144,56 +138,21 @@ function drawCircle(
   program: WebGLProgram,
   buffer: WebGLBuffer,
   vertexPositionLocation: number,
-  projectionMatrixLocation: WebGLUniformLocation,
-  modelViewMatrixLocation: WebGLUniformLocation,
+  scaleVectorLocation: WebGLUniformLocation,
 ) {
   gl.useProgram(program);
 
-  // Create a perspective matrix, a special matrix that is
-  // used to simulate the distortion of perspective in a camera.
-  // Our field of view is 45 degrees, with a width/height
-  // ratio that matches the display size of the canvas
-  // and we only want to see objects between 0.1 units
-  // and 100 units away from the camera.
-
-  const fieldOfView = 45 * Math.PI / 180;   // in radians
   // @ts-ignore
   const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-  const zNear = 0.1;
-  const zFar = 100.0;
-  const projectionMatrix = mat4.create();
 
-  // note: gl-matrix.js always has the first argument
-  // as the destination to receive the result.
-  mat4.perspective(projectionMatrix,
-    fieldOfView,
-    aspect,
-    zNear,
-    zFar);
-
-  // set this matrix to the value in the program uniform
-  gl.uniformMatrix4fv(
-    projectionMatrixLocation,
-    false,
-    projectionMatrix);
-
-  // Set the drawing position to the "identity" point, which is
-  // the center of the scene.
-  const modelViewMatrix = mat4.create();
-
-  // Now move the drawing position a bit to where we want to
-  // start drawing the square.
-
-  mat4.translate(modelViewMatrix,     // destination matrix
-    modelViewMatrix,     // matrix to translate
-    [-0.0, 0.0, -6.0]);  // amount to translate
-  // note: translating "back" 6 units (putting the circle 6 units deep) makes it appear smaller
-
-  // set matrix to program uniform
-  gl.uniformMatrix4fv(
-    modelViewMatrixLocation,
-    false,
-    modelViewMatrix);
+  // scale vector will convert the circle from an oval shape
+  //   to a circle shape by changing the dimensions of the circle primitive
+  //   relative to the aspect ratio of the canvas.
+  // the circle starts out as an oval because the canvas is potentially not a perfect square,
+  //   yet canvas clipspace goes from -1 to 1 in x and y directions regardless.
+  // scale vector will also change the size of the circle
+  //   by multiplying the vector positions by CIRCLE_RADIUS
+  gl.uniform2f(scaleVectorLocation, config.CIRCLE_RADIUS, aspect * config.CIRCLE_RADIUS);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   let aPosition = vertexPositionLocation;
@@ -218,16 +177,12 @@ function drawScene(
   // Clear the canvas before we start drawing on it.
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  if (!circlePInfo.uniformLocations.projectionMatrix) {
-    throw new Error('projectionMatrix location not set');
-  }
-  if (!circlePInfo.uniformLocations.modelViewMatrix) {
-    throw new Error('modelViewMatrix location not set');
+  if (!circlePInfo.uniformLocations.scaleVector) {
+    throw new Error('scaleVector location not set');
   }
 
   drawCircle(gl, circlePInfo.program, circleBuffers, circlePInfo.attribLocations.vertexPosition,
-    circlePInfo.uniformLocations.projectionMatrix,
-    circlePInfo.uniformLocations.modelViewMatrix);
+    circlePInfo.uniformLocations.scaleVector);
 }
 
 const globalCircleBuffers = initCircleBuffer(globalGL, circleProgramInfo)
@@ -264,6 +219,10 @@ function tick(gl: WebGLRenderingContext, now: number) {
 
   drawScene(gl, circleProgramInfo, globalCircleBuffers);
 
-  requestAnimationFrame((now: number) => tick(gl, now));
+  if (!config.ONLY_DRAW_ONCE) {
+    requestAnimationFrame((now: number) => tick(gl, now));
+  }
 }
+
+// start the scene drawing loop
 requestAnimationFrame((now: number) => tick(globalGL, now));
