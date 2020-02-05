@@ -1,6 +1,11 @@
 import * as PressedKeys from './PressedKeys';
 import config from './config';
 
+// @ts-ignore
+import circleVsSource from './circle_vertex.glsl';
+// @ts-ignore
+import circleFsSource from './circle_fragment.glsl';
+
 const canvasId = 'canvas';
 
 const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
@@ -12,24 +17,6 @@ const globalGL = canvas.getContext('webgl');
 if (!globalGL) {
   throw new Error(`Could not get webgl context from canvas`);
 }
-
-const circleVsSource = `
-  attribute vec2 aPosition;
-  
-  uniform vec2 uScaleVector;
-
-  void main() {
-    // simply scale the position by the scale vector.
-    // vector scaling is done via multiplication.
-    gl_Position = vec4(uScaleVector * aPosition, 0, 1);
-  }
-`;
-
-const circleFsSource = `
-  void main() {
-    gl_FragColor = vec4(0.3, 0.5, 0.7, 0.9);
-  }
-`;
 
 function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
   const vertexShader = loadShaderOrFail(gl, gl.VERTEX_SHADER, vsSource);

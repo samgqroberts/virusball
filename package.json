@@ -13,11 +13,14 @@
   },
   "author": "Sam Roberts <samgqroberts@gmail.com>",
   "dependencies": {
-    "@types/lodash": "^4.14.149",
     "lodash": "^4.17.15"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.149",
     "copy-webpack-plugin": "^5.0.0",
+    "glslify-hex": "^2.1.1",
+    "glslify-loader": "^2.0.0",
+    "raw-loader": "^4.0.0",
     "ts-loader": "^6.2.1",
     "typescript": "^3.7.4",
     "webpack": "^4.29.3",
