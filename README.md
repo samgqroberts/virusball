@@ -1,5 +1,13 @@
 # Virusball
-could it be the spiritual successor to Supervirus? 
+
+In 2013 I took my first few steps into Javascript by making a game called Supervirus ( [code](https://github.com/SylverStudios/Supervirus) | [play it!](https://sylverstudios.github.io/games/2019/02/16/supervirus.html) ).
+Over 6 years later it's still one of my favorite things.
+The game mechanics are dead simple, but (I think, though I'm biased...) satisfying.
+
+Virusball is a spiritual successor to Supervirus in a couple ways.
+One, I'm using this project as a way take my first few steps into WebGL.
+Two, I want to reproduce the same simple-yet-satisfying feeling, using similar circles-moving-through-2D-space forms.
+But this time there's a ball involved!
 
 ## Running Locally
 1. Install NPM @ 6.x
