@@ -77,7 +77,9 @@ function drawCircle(
   buffer: WebGLBuffer,
   vertexPositionLocation: number,
   scaleVectorLocation: WebGLUniformLocation,
-  translationVectorLocation: WebGLUniformLocation
+  translationVectorLocation: WebGLUniformLocation,
+  circlePosX: number,
+  circlePosY: number
 ) {
   gl.useProgram(program);
 
@@ -93,7 +95,7 @@ function drawCircle(
   gl.uniform2f(scaleVectorLocation, config.CIRCLE_RADIUS, aspect * config.CIRCLE_RADIUS);
 
   // translation vector will move the circle along x and y axes
-  gl.uniform2f(translationVectorLocation, -0.2, -0.2);
+  gl.uniform2f(translationVectorLocation, circlePosX, circlePosY);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   let aPosition = vertexPositionLocation;
@@ -109,6 +111,8 @@ function drawScene(
   gl: WebGLRenderingContext,
   circlePInfo: CircleProgramInfo,
   circleBuffers: WebGLBuffer,
+  circlePosX: number,
+  circlePosY: number
 ) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
@@ -118,9 +122,15 @@ function drawScene(
   // Clear the canvas before we start drawing on it.
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  drawCircle(gl, circlePInfo.program, circleBuffers, circlePInfo.attribLocations.vertexPosition,
+  drawCircle(gl,
+    circlePInfo.program,
+    circleBuffers,
+    circlePInfo.attribLocations.vertexPosition,
     circlePInfo.uniformLocations.scaleVector,
-    circlePInfo.uniformLocations.translationVector);
+    circlePInfo.uniformLocations.translationVector,
+    circlePosX,
+    circlePosY,
+  );
 }
 
 function initGame() {
@@ -133,8 +143,9 @@ function initGame() {
 
   // initialize scene drawing / game engine variables
   let then = 0;
-  let tutorialSquarePositionCorrectionX = 0;
   let frameCount = 0;
+  let circlePosX = config.CIRCLE_STARTING_X;
+  let circlePosY = config.CIRCLE_STARTING_Y;
 
   if (config.LOG_FPS) {
     let previousFrameCount = 0;
@@ -154,12 +165,22 @@ function initGame() {
 
     const keys = PressedKeys.capture();
     if (keys.isPressed('a')) {
-      tutorialSquarePositionCorrectionX -= 1;
+      circlePosX -= config.TICK_VELOCITY;
     } else if (keys.isPressed('d')) {
-      tutorialSquarePositionCorrectionX += 1;
+      circlePosX += config.TICK_VELOCITY;
+    }
+    if (keys.isPressed('s')) {
+      circlePosY -= config.TICK_VELOCITY;
+    } else if (keys.isPressed('w')) {
+      circlePosY += config.TICK_VELOCITY
     }
 
-    drawScene(gl, circleProgramInfo, circleBuffer);
+    drawScene(gl,
+      circleProgramInfo,
+      circleBuffer,
+      circlePosX,
+      circlePosY
+    );
 
     if (!config.ONLY_DRAW_ONCE) {
       requestAnimationFrame((now: number) => tick(now));
