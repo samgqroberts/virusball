@@ -93,3 +93,18 @@ export function initShaderProgramOrFail(gl: WebGLRenderingContext, vsSource: str
   return initShaderProgram(gl, vsSource, fsSource)
     || (() => { throw new Error('could not initShaderProgram'); })();
 }
+
+/**
+ * Retrieves location of given uniform from given program. Throws if unsuccessful.
+ * @param gl the WebGL rendering context
+ * @param program the WebGL program to request the uniform location from
+ * @param uniformName the name of the uniform to get the location for
+ */
+export function getUniformLocationOrFail(
+  gl: WebGLRenderingContext,
+  program: WebGLProgram,
+  uniformName: string
+): WebGLUniformLocation {
+  return gl.getUniformLocation(program, uniformName)
+    || (() => { throw new Error(`could not get location for uniform '${uniformName}'`); })();
+}

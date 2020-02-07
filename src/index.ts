@@ -4,26 +4,41 @@ import config from './config';
 import circleVsSource from './circle_vertex.glsl';
 // @ts-ignore
 import circleFsSource from './circle_fragment.glsl';
-import { getWebglContext, initShaderProgramOrFail } from "./WebglUtils";
+import { getUniformLocationOrFail, getWebglContext, initShaderProgramOrFail } from "./WebglUtils";
 
-const globalGL = getWebglContext('canvas');
+// entrypoint to the game. defined below
+initGame();
 
-const circleProgram = initShaderProgramOrFail(globalGL, circleVsSource, circleFsSource);
-
-const circleProgramInfo = {
-  program: circleProgram,
+type CircleProgramInfo = {
+  program: WebGLProgram,
   attribLocations: {
-    vertexPosition: globalGL.getAttribLocation(circleProgram, 'aPosition'),
+    vertexPosition: number,
   },
   uniformLocations: {
-    scaleVector: globalGL.getUniformLocation(circleProgram, 'uScaleVector'),
-  },
-};
+    scaleVector: WebGLUniformLocation,
+    translationVector: WebGLUniformLocation,
+  }
+}
+function initCircleProgramInfo(
+  gl: WebGLRenderingContext,
+  circleProgram: WebGLProgram
+): CircleProgramInfo {
+  return {
+    program: circleProgram,
+    attribLocations: {
+      vertexPosition: gl.getAttribLocation(circleProgram, 'aPosition'),
+    },
+    uniformLocations: {
+      scaleVector: getUniformLocationOrFail(gl, circleProgram, 'uScaleVector'),
+      translationVector: getUniformLocationOrFail(gl, circleProgram, 'uTranslationVector'),
+    },
+  };
+}
 
 function initCircleBuffer(
   gl: WebGLRenderingContext,
-  pInfo: typeof circleProgramInfo,
-) {
+  pInfo: CircleProgramInfo,
+): WebGLBuffer {
   const program = pInfo.program;
   gl.useProgram(program);
   // Create a buffer object
@@ -52,7 +67,8 @@ function initCircleBuffer(
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-  return vertexBuffer;
+  return vertexBuffer
+    || (() => { throw new Error('Could not init circle buffers'); })();
 }
 
 function drawCircle(
@@ -61,11 +77,11 @@ function drawCircle(
   buffer: WebGLBuffer,
   vertexPositionLocation: number,
   scaleVectorLocation: WebGLUniformLocation,
+  translationVectorLocation: WebGLUniformLocation
 ) {
   gl.useProgram(program);
 
-  // @ts-ignore
-  const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+  const aspect = gl.canvas.width / gl.canvas.height;
 
   // scale vector will convert the circle from an oval shape
   //   to a circle shape by changing the dimensions of the circle primitive
@@ -75,6 +91,9 @@ function drawCircle(
   // scale vector will also change the size of the circle
   //   by multiplying the vector positions by CIRCLE_RADIUS
   gl.uniform2f(scaleVectorLocation, config.CIRCLE_RADIUS, aspect * config.CIRCLE_RADIUS);
+
+  // translation vector will move the circle along x and y axes
+  gl.uniform2f(translationVectorLocation, -0.2, -0.2);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   let aPosition = vertexPositionLocation;
@@ -88,7 +107,7 @@ function drawCircle(
 
 function drawScene(
   gl: WebGLRenderingContext,
-  circlePInfo: typeof circleProgramInfo,
+  circlePInfo: CircleProgramInfo,
   circleBuffers: WebGLBuffer,
 ) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
@@ -99,52 +118,54 @@ function drawScene(
   // Clear the canvas before we start drawing on it.
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  if (!circlePInfo.uniformLocations.scaleVector) {
-    throw new Error('scaleVector location not set');
-  }
-
   drawCircle(gl, circlePInfo.program, circleBuffers, circlePInfo.attribLocations.vertexPosition,
-    circlePInfo.uniformLocations.scaleVector);
+    circlePInfo.uniformLocations.scaleVector,
+    circlePInfo.uniformLocations.translationVector);
 }
 
-const globalCircleBuffers = initCircleBuffer(globalGL, circleProgramInfo)
-  || (() => { throw new Error('Could not init circle buffers'); })();
+function initGame() {
+  const gl = getWebglContext('canvas');
 
-let then = 0;
+  // initialize everything needed for the circle program
+  const circleProgram = initShaderProgramOrFail(gl, circleVsSource, circleFsSource);
+  const circleProgramInfo = initCircleProgramInfo(gl, circleProgram);
+  const circleBuffer = initCircleBuffer(gl, circleProgramInfo);
 
-let tutorialSquarePositionCorrectionX = 0;
+  // initialize scene drawing / game engine variables
+  let then = 0;
+  let tutorialSquarePositionCorrectionX = 0;
+  let frameCount = 0;
 
-let frameCount = 0;
-
-if (config.LOG_FPS) {
-  let previousFrameCount = 0;
-  setInterval(() => {
-    console.log('frames in the past second:', frameCount - previousFrameCount);
-    previousFrameCount = frameCount;
-  }, 1000);
-}
-
-// Draw the scene repeatedly
-function tick(gl: WebGLRenderingContext, now: number) {
-  frameCount++;
-
-  now *= 0.001;  // convert to seconds
-  const deltaTime = now - then;
-  then = now;
-
-  const keys = PressedKeys.capture();
-  if (keys.isPressed('a')) {
-    tutorialSquarePositionCorrectionX -= 1;
-  } else if (keys.isPressed('d')) {
-    tutorialSquarePositionCorrectionX += 1;
+  if (config.LOG_FPS) {
+    let previousFrameCount = 0;
+    setInterval(() => {
+      console.log('frames in the past second:', frameCount - previousFrameCount);
+      previousFrameCount = frameCount;
+    }, 1000);
   }
 
-  drawScene(gl, circleProgramInfo, globalCircleBuffers);
+  // Draw the scene repeatedly
+  function tick(now: number) {
+    frameCount++;
 
-  if (!config.ONLY_DRAW_ONCE) {
-    requestAnimationFrame((now: number) => tick(gl, now));
+    now *= 0.001;  // convert to seconds
+    const deltaTime = now - then;
+    then = now;
+
+    const keys = PressedKeys.capture();
+    if (keys.isPressed('a')) {
+      tutorialSquarePositionCorrectionX -= 1;
+    } else if (keys.isPressed('d')) {
+      tutorialSquarePositionCorrectionX += 1;
+    }
+
+    drawScene(gl, circleProgramInfo, circleBuffer);
+
+    if (!config.ONLY_DRAW_ONCE) {
+      requestAnimationFrame((now: number) => tick(now));
+    }
   }
-}
 
-// start the scene drawing loop
-requestAnimationFrame((now: number) => tick(globalGL, now));
+  // start the scene drawing loop
+  requestAnimationFrame((now: number) => tick(now));
+}
