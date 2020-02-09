@@ -165,31 +165,44 @@ function logFPS(state: State): void {
  * @param state the game state to update. state is assumed to be mutable and its fields will be
  *        mutated in-place.
  */
+// TODO implement speed cap
+// TODO implement drag when no keys are pressed
+// TODO reversing direction should accelerate quicker than continuing in same direction
 function incorporateUserInput(state: State): void {
-  const { TICK_VELOCITY } = config;
+  // PLAYER_ACCELERATION is measured per second, so multiply by how many seconds have passed
+  //   to determine how much to change velocity
+  const deltaTime = state.currentFrameTimestamp - state.previousFrameTimestamp;
+  const acceleration = config.PLAYER_ACCELERATION * deltaTime;
+
   const keys = PressedKeys.capture();
-  // player1
+  // update velocity for player1
   if (keys.isPressed('a')) {
-    state.player1PosX -= TICK_VELOCITY;
+    state.player1VelocityX -= acceleration;
   } else if (keys.isPressed('d')) {
-    state.player1PosX += TICK_VELOCITY;
+    state.player1VelocityX += acceleration;
   }
   if (keys.isPressed('s')) {
-    state.player1PosY -= TICK_VELOCITY;
+    state.player1VelocityY -= acceleration;
   } else if (keys.isPressed('w')) {
-    state.player1PosY += TICK_VELOCITY
+    state.player1VelocityY += acceleration
   }
-  // player2
+  // update velocity for player2
   if (keys.isPressed('ArrowLeft')) {
-    state.player2PosX -= TICK_VELOCITY;
+    state.player2VelocityX -= acceleration;
   } else if (keys.isPressed('ArrowRight')) {
-    state.player2PosX += TICK_VELOCITY;
+    state.player2VelocityX += acceleration;
   }
   if (keys.isPressed('ArrowDown')) {
-    state.player2PosY -= TICK_VELOCITY;
+    state.player2VelocityY -= acceleration;
   } else if (keys.isPressed('ArrowUp')) {
-    state.player2PosY += TICK_VELOCITY;
+    state.player2VelocityY += acceleration;
   }
+
+  // update positions based on velocity
+  state.player1PosX += state.player1VelocityX;
+  state.player1PosY += state.player1VelocityY;
+  state.player2PosX += state.player2VelocityX;
+  state.player2PosY += state.player2VelocityY;
 }
 
 function initGame() {
@@ -210,7 +223,6 @@ function initGame() {
     state.previousFrameTimestamp = state.currentFrameTimestamp;
     state.currentFrameTimestamp = now * 0.001; // convert to seconds
     // TODO use deltaTime, probably for acceleration (current movement is simply velocity)
-    const deltaTime = state.currentFrameTimestamp - state.previousFrameTimestamp;
 
     incorporateUserInput(state);
 

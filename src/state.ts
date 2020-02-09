@@ -10,8 +10,13 @@ export type State = {
 
   player1PosX: number
   player1PosY: number
+  player1VelocityX: number
+  player1VelocityY: number
+
   player2PosX: number
   player2PosY: number
+  player2VelocityX: number
+  player2VelocityY: number
 }
 
 export function getInitialState(): State {
@@ -22,7 +27,12 @@ export function getInitialState(): State {
 
     player1PosX: config.PLAYER_1_STARTING_X,
     player1PosY: config.PLAYER_1_STARTING_Y,
+    player1VelocityX: 0,
+    player1VelocityY: 0,
+
     player2PosX: config.PLAYER_2_STARTING_X,
     player2PosY: config.PLAYER_2_STARTING_Y,
+    player2VelocityX: 0,
+    player2VelocityY: 0,
   };
 }

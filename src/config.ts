@@ -9,7 +9,8 @@ export default {
   PLAYER_2_STARTING_X: 0.2,
   PLAYER_2_STARTING_Y: 0,
 
-  TICK_VELOCITY: 0.01, // how much to move player per tick while player has a key pressed
+  // how much to change player velocity per second while player has a key pressed
+  PLAYER_ACCELERATION: 0.015,
 
   // for debugging
   LOG_FPS: false,
