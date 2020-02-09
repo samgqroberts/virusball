@@ -11,6 +11,7 @@ export default {
 
   // how much to change player velocity per second while player has a key pressed
   PLAYER_ACCELERATION: 0.02,
+  PLAYER_DRAG: 0.01,
   PLAYER_MAX_SPEED: 0.017,
 
   // for debugging

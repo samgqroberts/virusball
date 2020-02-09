@@ -11,7 +11,7 @@ document.addEventListener('keyup', (e) => {
   _.remove(keysPressed, (key) => key === e.key);
 });
 
-type KeysCapture = {
+export type KeysCapture = {
   readonly keysPressed: string[]
   readonly isPressed: (key: string) => boolean
 }
