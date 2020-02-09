@@ -209,9 +209,6 @@ function updatePlayerPositions(state: State): void {
  * @param negativeKey keycode for movement in negative direction
  * @param positiveKey keycode for movement in positive direction
  */
-// TODO allow latest-pressed movement buttons to take precedence
-//      eg. currently pressing and holding 'a' then hitting 'd' continues moving left, should go
-//          right
 function updateComponentVelocity(
   currentVelocity: number,
   maxVelocity: number,
@@ -223,19 +220,20 @@ function updateComponentVelocity(
   positiveKey: string,
 ): number {
   let velocity = currentVelocity;
-  if (pressedKeys.isPressed(negativeKey)) {
+  const pressedKey = pressedKeys.latestPressed(negativeKey, positiveKey);
+  if (pressedKey === negativeKey) {
     if (velocity > 0) {
       velocity -= reverseAccelerationRate;
     } else {
       velocity -= accelerationRate;
     }
-  } else if (pressedKeys.isPressed(positiveKey)) {
+  } else if (pressedKey === positiveKey) {
     if (velocity < 0) {
       velocity += reverseAccelerationRate;
     } else {
       velocity += accelerationRate;
     }
-  } else { // no keys are pressed, so consider dragging to stop
+  } else { // no relevant keys are pressed, so consider dragging to stop
     if (currentVelocity > 0) {
       velocity = Math.max(0, velocity - dragRate);
     } else if (currentVelocity < 0) {

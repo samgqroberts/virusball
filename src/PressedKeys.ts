@@ -1,9 +1,10 @@
 import _ from 'lodash';
 
+// array to keep track of key presses
+// must ensure that later-pressed keys have higher indexes
 const keysPressed: string[] = [];
 
 document.addEventListener('keydown', (e) => {
-  console.log(e.key);
   keysPressed.push(e.key);
 });
 
@@ -13,12 +14,19 @@ document.addEventListener('keyup', (e) => {
 
 export type KeysCapture = {
   readonly keysPressed: string[]
-  readonly isPressed: (key: string) => boolean
+  readonly latestPressed: (key1: string, key2: string) => string | null
 }
 
 export function capture(): KeysCapture {
   return {
     keysPressed: keysPressed.slice(),
-    isPressed: (key) => keysPressed.indexOf(key) !== -1,
+    latestPressed: (key1, key2) => {
+      const key1Index = keysPressed.indexOf(key1);
+      const key2Index = keysPressed.indexOf(key2);
+      if (key1Index === -1 && key2Index === -1) {
+        return null;
+      }
+      return key1Index > key2Index ? key1 : key2;
+    }
   };
 }
