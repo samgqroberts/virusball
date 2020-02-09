@@ -165,14 +165,15 @@ function logFPS(state: State): void {
  * @param state the game state to update. state is assumed to be mutable and its fields will be
  *        mutated in-place.
  */
-// TODO implement speed cap
 // TODO implement drag when no keys are pressed
 // TODO reversing direction should accelerate quicker than continuing in same direction
-function incorporateUserInput(state: State): void {
+// TODO movement needs to be corrected for canvas aspect
+function updatePlayerPositions(state: State): void {
+  const { PLAYER_ACCELERATION, PLAYER_MAX_SPEED } = config;
   // PLAYER_ACCELERATION is measured per second, so multiply by how many seconds have passed
   //   to determine how much to change velocity
   const deltaTime = state.currentFrameTimestamp - state.previousFrameTimestamp;
-  const acceleration = config.PLAYER_ACCELERATION * deltaTime;
+  const acceleration = PLAYER_ACCELERATION * deltaTime;
 
   const keys = PressedKeys.capture();
   // update velocity for player1
@@ -198,11 +199,26 @@ function incorporateUserInput(state: State): void {
     state.player2VelocityY += acceleration;
   }
 
+  // cap speed
+  state.player1VelocityX = capVelocity(state.player1VelocityX, PLAYER_MAX_SPEED);
+  state.player1VelocityY = capVelocity(state.player1VelocityY, PLAYER_MAX_SPEED);
+  state.player2VelocityX = capVelocity(state.player2VelocityX, PLAYER_MAX_SPEED);
+  state.player2VelocityY = capVelocity(state.player2VelocityY, PLAYER_MAX_SPEED);
+
   // update positions based on velocity
   state.player1PosX += state.player1VelocityX;
   state.player1PosY += state.player1VelocityY;
   state.player2PosX += state.player2VelocityX;
   state.player2PosY += state.player2VelocityY;
+}
+
+function capVelocity(velocity: number, maxVelocity: number): number {
+  if (velocity > 0) {
+    return Math.min(velocity, maxVelocity);
+  } else if (velocity < 0) {
+    return Math.max(velocity, -maxVelocity);
+  }
+  return velocity;
 }
 
 function initGame() {
@@ -222,9 +238,8 @@ function initGame() {
     state.frameCount++;
     state.previousFrameTimestamp = state.currentFrameTimestamp;
     state.currentFrameTimestamp = now * 0.001; // convert to seconds
-    // TODO use deltaTime, probably for acceleration (current movement is simply velocity)
 
-    incorporateUserInput(state);
+    updatePlayerPositions(state);
 
     drawScene(gl,
       circleProgramInfo,

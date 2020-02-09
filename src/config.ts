@@ -10,7 +10,8 @@ export default {
   PLAYER_2_STARTING_Y: 0,
 
   // how much to change player velocity per second while player has a key pressed
-  PLAYER_ACCELERATION: 0.015,
+  PLAYER_ACCELERATION: 0.02,
+  PLAYER_MAX_SPEED: 0.017,
 
   // for debugging
   LOG_FPS: false,
