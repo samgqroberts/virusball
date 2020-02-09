@@ -169,18 +169,20 @@ function logFPS(state: State): void {
  */
 // TODO movement needs to be corrected for canvas aspect
 function updatePlayerPositions(state: State): void {
-  const { PLAYER_ACCELERATION, PLAYER_DRAG, PLAYER_MAX_SPEED } = config;
+  const { PLAYER_ACCELERATION, PLAYER_REVERSE_ACCELERATION, PLAYER_DRAG, PLAYER_MAX_SPEED } = config;
   // PLAYER_ACCELERATION is measured per second, so multiply by how many seconds have passed
   //   to determine how much to change velocity
   const deltaTime = state.currentFrameTimestamp - state.previousFrameTimestamp;
   const acceleration = PLAYER_ACCELERATION * deltaTime;
+  const reverseAcceleration = PLAYER_REVERSE_ACCELERATION * deltaTime;
   const drag = PLAYER_DRAG * deltaTime;
 
   const keys = PressedKeys.capture();
 
   // wrapper to capture current-frame constants
   const updateVelocityFn = (velocity: number, negativeKey: string, positiveKey: string) =>
-    updateComponentVelocity(velocity, PLAYER_MAX_SPEED, acceleration, drag, keys, negativeKey, positiveKey);
+    updateComponentVelocity(velocity, PLAYER_MAX_SPEED, acceleration, reverseAcceleration, drag,
+      keys, negativeKey, positiveKey);
 
   // update velocities
   state.player1VelocityX = updateVelocityFn(state.player1VelocityX, 'a', 'd');
@@ -200,12 +202,13 @@ function updatePlayerPositions(state: State): void {
  * @param currentVelocity the component velocity value coming into this frame
  * @param maxVelocity the cap for the component velocity
  * @param accelerationRate amount to update velocity by if correct key is pressed
+ * @param reverseAccelerationRate amount to update velocity by if correct key is pressed
+ *        and player is currently moving in the opposite direction
  * @param dragRate amount to update velocity by if no relevant key is pressed
  * @param pressedKeys current frame capture of pressed keys
  * @param negativeKey keycode for movement in negative direction
  * @param positiveKey keycode for movement in positive direction
  */
-// TODO reversing direction should accelerate quicker than continuing in same direction
 // TODO allow latest-pressed movement buttons to take precedence
 //      eg. currently pressing and holding 'a' then hitting 'd' continues moving left, should go
 //          right
@@ -213,6 +216,7 @@ function updateComponentVelocity(
   currentVelocity: number,
   maxVelocity: number,
   accelerationRate: number,
+  reverseAccelerationRate: number,
   dragRate: number,
   pressedKeys: KeysCapture,
   negativeKey: string,
@@ -220,9 +224,17 @@ function updateComponentVelocity(
 ): number {
   let velocity = currentVelocity;
   if (pressedKeys.isPressed(negativeKey)) {
-    velocity -= accelerationRate;
+    if (velocity > 0) {
+      velocity -= reverseAccelerationRate;
+    } else {
+      velocity -= accelerationRate;
+    }
   } else if (pressedKeys.isPressed(positiveKey)) {
-    velocity += accelerationRate;
+    if (velocity < 0) {
+      velocity += reverseAccelerationRate;
+    } else {
+      velocity += accelerationRate;
+    }
   } else { // no keys are pressed, so consider dragging to stop
     if (currentVelocity > 0) {
       velocity = Math.max(0, velocity - dragRate);

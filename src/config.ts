@@ -1,5 +1,5 @@
 // config.ts
-// a collection of global constant variables and configuration options
+// a collection of global constants and configuration options
 
 export default {
   CIRCLE_RADIUS: 0.1, // in clipspace, i think
@@ -11,6 +11,7 @@ export default {
 
   // how much to change player velocity per second while player has a key pressed
   PLAYER_ACCELERATION: 0.02,
+  PLAYER_REVERSE_ACCELERATION: 0.04,
   PLAYER_DRAG: 0.01,
   PLAYER_MAX_SPEED: 0.017,
 
