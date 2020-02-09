@@ -5,6 +5,7 @@ import circleVsSource from './circle_vertex.glsl';
 // @ts-ignore
 import circleFsSource from './circle_fragment.glsl';
 import { getUniformLocationOrFail, getWebglContext, initShaderProgramOrFail } from "./WebglUtils";
+import { getInitialState, State } from "./state";
 
 // entrypoint to the game. defined below
 initGame();
@@ -111,8 +112,7 @@ function drawScene(
   gl: WebGLRenderingContext,
   circlePInfo: CircleProgramInfo,
   circleBuffers: WebGLBuffer,
-  circlePosX: number,
-  circlePosY: number
+  state: State,
 ) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
@@ -128,9 +128,43 @@ function drawScene(
     circlePInfo.attribLocations.vertexPosition,
     circlePInfo.uniformLocations.scaleVector,
     circlePInfo.uniformLocations.translationVector,
-    circlePosX,
-    circlePosY,
+    state.player1PosX,
+    state.player1PosY,
   );
+}
+
+/**
+ * If FPS logging is on (configured), tracks how many frames pass each second and logs to console.
+ * @param state the game state object. state is assumed to be mutable, with the reference passed
+ *        in on initial function call being valid for the lifecycle of the game.
+ */
+function logFPS(state: State): void {
+  if (config.LOG_FPS) {
+    let previousFrameCount = 0;
+    setInterval(() => {
+      console.log('frames in the past second:', state.frameCount - previousFrameCount);
+      previousFrameCount = state.frameCount;
+    }, 1000);
+  }
+}
+
+/**
+ * Updates the game state wrt user input (which keys are pressed in this frame).
+ * @param state the game state to update. state is assumed to be mutable and its fields will be
+ *        mutated in-place.
+ */
+function incorporateUserInput(state: State): void {
+  const keys = PressedKeys.capture();
+  if (keys.isPressed('a')) {
+    state.player1PosX -= config.TICK_VELOCITY;
+  } else if (keys.isPressed('d')) {
+    state.player1PosX += config.TICK_VELOCITY;
+  }
+  if (keys.isPressed('s')) {
+    state.player1PosY -= config.TICK_VELOCITY;
+  } else if (keys.isPressed('w')) {
+    state.player1PosY += config.TICK_VELOCITY
+  }
 }
 
 function initGame() {
@@ -142,44 +176,23 @@ function initGame() {
   const circleBuffer = initCircleBuffer(gl, circleProgramInfo);
 
   // initialize scene drawing / game engine variables
-  let then = 0;
-  let frameCount = 0;
-  let circlePosX = config.CIRCLE_STARTING_X;
-  let circlePosY = config.CIRCLE_STARTING_Y;
-
-  if (config.LOG_FPS) {
-    let previousFrameCount = 0;
-    setInterval(() => {
-      console.log('frames in the past second:', frameCount - previousFrameCount);
-      previousFrameCount = frameCount;
-    }, 1000);
-  }
+  const state: State = getInitialState();
+  logFPS(state);
 
   // Draw the scene repeatedly
   function tick(now: number) {
-    frameCount++;
+    state.frameCount++;
+    state.previousFrameTimestamp = state.currentFrameTimestamp;
+    state.currentFrameTimestamp = now * 0.001; // convert to seconds
+    // TODO use deltaTime, probably for acceleration (current movement is simply velocity)
+    const deltaTime = state.currentFrameTimestamp - state.previousFrameTimestamp;
 
-    now *= 0.001;  // convert to seconds
-    const deltaTime = now - then;
-    then = now;
-
-    const keys = PressedKeys.capture();
-    if (keys.isPressed('a')) {
-      circlePosX -= config.TICK_VELOCITY;
-    } else if (keys.isPressed('d')) {
-      circlePosX += config.TICK_VELOCITY;
-    }
-    if (keys.isPressed('s')) {
-      circlePosY -= config.TICK_VELOCITY;
-    } else if (keys.isPressed('w')) {
-      circlePosY += config.TICK_VELOCITY
-    }
+    incorporateUserInput(state);
 
     drawScene(gl,
       circleProgramInfo,
       circleBuffer,
-      circlePosX,
-      circlePosY
+      state,
     );
 
     if (!config.ONLY_DRAW_ONCE) {
