@@ -122,6 +122,7 @@ function drawScene(
   // Clear the canvas before we start drawing on it.
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+  // player1
   drawCircle(gl,
     circlePInfo.program,
     circleBuffers,
@@ -130,6 +131,17 @@ function drawScene(
     circlePInfo.uniformLocations.translationVector,
     state.player1PosX,
     state.player1PosY,
+  );
+
+  // player2
+  drawCircle(gl,
+    circlePInfo.program,
+    circleBuffers,
+    circlePInfo.attribLocations.vertexPosition,
+    circlePInfo.uniformLocations.scaleVector,
+    circlePInfo.uniformLocations.translationVector,
+    state.player2PosX,
+    state.player2PosY,
   );
 }
 
@@ -154,16 +166,29 @@ function logFPS(state: State): void {
  *        mutated in-place.
  */
 function incorporateUserInput(state: State): void {
+  const { TICK_VELOCITY } = config;
   const keys = PressedKeys.capture();
+  // player1
   if (keys.isPressed('a')) {
-    state.player1PosX -= config.TICK_VELOCITY;
+    state.player1PosX -= TICK_VELOCITY;
   } else if (keys.isPressed('d')) {
-    state.player1PosX += config.TICK_VELOCITY;
+    state.player1PosX += TICK_VELOCITY;
   }
   if (keys.isPressed('s')) {
-    state.player1PosY -= config.TICK_VELOCITY;
+    state.player1PosY -= TICK_VELOCITY;
   } else if (keys.isPressed('w')) {
-    state.player1PosY += config.TICK_VELOCITY
+    state.player1PosY += TICK_VELOCITY
+  }
+  // player2
+  if (keys.isPressed('ArrowLeft')) {
+    state.player2PosX -= TICK_VELOCITY;
+  } else if (keys.isPressed('ArrowRight')) {
+    state.player2PosX += TICK_VELOCITY;
+  }
+  if (keys.isPressed('ArrowDown')) {
+    state.player2PosY -= TICK_VELOCITY;
+  } else if (keys.isPressed('ArrowUp')) {
+    state.player2PosY += TICK_VELOCITY;
   }
 }
 

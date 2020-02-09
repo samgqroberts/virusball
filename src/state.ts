@@ -10,8 +10,6 @@ export type State = {
 
   player1PosX: number
   player1PosY: number
-  // TODO player2 position tracking is currently just a placeholder
-  //      for when we add the second player to the canvas
   player2PosX: number
   player2PosY: number
 }
