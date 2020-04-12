@@ -18,6 +18,10 @@ enum CircleHalf {
 // entrypoint to the game. defined below
 initGame();
 
+function getAspect(gl: WebGLRenderingContext): number {
+  return gl.canvas.width / gl.canvas.height;
+}
+
 // TODO rename this program and program info.
 //      it no longer only relates to the circle.
 //      it applies to any 2d shape with scale and translation vectors.
@@ -141,7 +145,7 @@ function drawWithProgram(
   const { program, attribLocations, uniformLocations } = programInfo;
   gl.useProgram(program);
 
-  const aspect = gl.canvas.width / gl.canvas.height;
+  const aspect = getAspect(gl);
 
   // scale vector will convert the circle from an oval shape
   //   to a circle shape by changing the dimensions of the circle primitive
@@ -263,9 +267,9 @@ function logFPS(state: State): void {
  * Updates the game state wrt user input (which keys are pressed in this frame).
  * @param state the game state to update. state is assumed to be mutable and its fields will be
  *        mutated in-place.
+ * @param aspect the scale aspect of the canvas (width / height), to correct movement
  */
-// TODO movement needs to be corrected for canvas aspect
-function updatePlayerPositions(state: State): void {
+function updatePlayerPositions(state: State, aspect: number): void {
   const { PLAYER_ACCELERATION, PLAYER_REVERSE_ACCELERATION, PLAYER_DRAG, PLAYER_MAX_SPEED } = config;
   // PLAYER_ACCELERATION is measured per second, so multiply by how many seconds have passed
   //   to determine how much to change velocity
@@ -277,15 +281,23 @@ function updatePlayerPositions(state: State): void {
   const keys = PressedKeys.capture();
 
   // wrapper to capture current-frame constants
-  const updateVelocityFn = (velocity: number, negativeKey: string, positiveKey: string) =>
-    updateComponentVelocity(velocity, PLAYER_MAX_SPEED, acceleration, reverseAcceleration, drag,
-      keys, negativeKey, positiveKey);
+  const updateVelocityFn = (velocity: number, negativeKey: string, positiveKey: string, aspectMultiplier: number = 1) =>
+    updateComponentVelocity(
+      velocity,
+      PLAYER_MAX_SPEED * aspectMultiplier,
+      acceleration * aspectMultiplier,
+      reverseAcceleration * aspectMultiplier,
+      drag * aspectMultiplier,
+      keys,
+      negativeKey,
+      positiveKey,
+    );
 
   // update velocities
   state.player1VelocityX = updateVelocityFn(state.player1VelocityX, 'a', 'd');
-  state.player1VelocityY = updateVelocityFn(state.player1VelocityY, 's', 'w');
+  state.player1VelocityY = updateVelocityFn(state.player1VelocityY, 's', 'w', aspect);
   state.player2VelocityX = updateVelocityFn(state.player2VelocityX, 'ArrowLeft', 'ArrowRight');
-  state.player2VelocityY = updateVelocityFn(state.player2VelocityY, 'ArrowDown', 'ArrowUp');
+  state.player2VelocityY = updateVelocityFn(state.player2VelocityY, 'ArrowDown', 'ArrowUp', aspect);
 
   // update positions based on velocity
   state.player1PosX += state.player1VelocityX;
@@ -367,7 +379,7 @@ function initGame() {
     state.previousFrameTimestamp = state.currentFrameTimestamp;
     state.currentFrameTimestamp = now * 0.001; // convert to seconds
 
-    updatePlayerPositions(state);
+    updatePlayerPositions(state, getAspect(gl));
 
     drawScene(gl,
       circleProgramInfo,
