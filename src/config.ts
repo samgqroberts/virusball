@@ -4,6 +4,11 @@
 export default {
   CIRCLE_RADIUS: 0.1, // in clipspace, i think
 
+  // constants for drawing the goal semicircles
+  SEMICIRCLE_ARC_RADIUS: 0.2, // of the outer edge of the semicircle arc
+  SEMICIRCLE_ARC_WIDTH: 0.2, // proportion of semicircle outer radisu
+  GOAL_OFFSET_X: 0.6, // where to place the goals along the x axis, distance from center
+
   PLAYER_1_STARTING_X: -0.2,
   PLAYER_1_STARTING_Y: 0,
   PLAYER_2_STARTING_X: 0.2,

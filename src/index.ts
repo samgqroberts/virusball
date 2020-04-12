@@ -8,9 +8,19 @@ import { getUniformLocationOrFail, getWebglContext, initShaderProgramOrFail } fr
 import { getInitialState, State } from "./state";
 import { KeysCapture } from "./PressedKeys";
 
+const DIMENSION = 2; // it's a 2D game - so we have two values per vertex
+
+enum CircleHalf {
+  LEFT,
+  RIGHT,
+}
+
 // entrypoint to the game. defined below
 initGame();
 
+// TODO rename this program and program info.
+//      it no longer only relates to the circle.
+//      it applies to any 2d shape with scale and translation vectors.
 type CircleProgramInfo = {
   program: WebGLProgram,
   attribLocations: {
@@ -21,6 +31,7 @@ type CircleProgramInfo = {
     translationVector: WebGLUniformLocation,
   }
 }
+
 function initCircleProgramInfo(
   gl: WebGLRenderingContext,
   circleProgram: WebGLProgram
@@ -37,52 +48,97 @@ function initCircleProgramInfo(
   };
 }
 
+function degreeToRadian(degree: number): number {
+  return degree * Math.PI / 180;
+}
+
+type CountedVertexBuffer = {
+  buffer: WebGLBuffer,
+  vertexCount: number,
+}
+
 function initCircleBuffer(
   gl: WebGLRenderingContext,
-  pInfo: CircleProgramInfo,
-): WebGLBuffer {
-  const program = pInfo.program;
+  program: WebGLProgram,
+): CountedVertexBuffer {
   gl.useProgram(program);
-  // Create a buffer object
   const vertexBuffer = gl.createBuffer();
+
   let vertices: number[] = [];
-  const vertCount = 2;
-  for (let i = 0.0; i <= 360; i+=1) {
-    // degrees to radians
-    let j = i * Math.PI / 180;
-    // X Y Z
-    let vert1 = [
-      Math.sin(j),
-      Math.cos(j),
-      // 0,
-    ];
-    let vert2 = [
+  for (let currentDegree = 0.0; currentDegree <= 360; currentDegree+=1) {
+    const currentRadian = degreeToRadian(currentDegree);
+    // add a vertex on the circle's circumference, according to currentDegree
+    vertices = vertices.concat([
+      Math.sin(currentRadian),
+      Math.cos(currentRadian),
+    ]);
+    // add a vertex back at the top of the circumference
+    vertices = vertices.concat([
       0,
       0,
-    ];
-    vertices = vertices.concat(vert1);
-    vertices = vertices.concat(vert2);
+    ]);
   }
 
-  // TODO what exactly "n" is should be propagated up to rendering
-  let n = vertices.length / vertCount;
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-  return vertexBuffer
-    || (() => { throw new Error('Could not init circle buffers'); })();
+  if (!vertexBuffer) {
+    throw new Error('Could not init circle buffers');
+  }
+
+  return { buffer: vertexBuffer, vertexCount: vertices.length / DIMENSION };
 }
 
-function drawCircle(
+function initSemicircleArcBuffer(
   gl: WebGLRenderingContext,
   program: WebGLProgram,
-  buffer: WebGLBuffer,
-  vertexPositionLocation: number,
-  scaleVectorLocation: WebGLUniformLocation,
-  translationVectorLocation: WebGLUniformLocation,
-  circlePosX: number,
-  circlePosY: number
-) {
+  circleHalf: CircleHalf,
+  arcWidth: number // value from 0 to 1, proportion of circle radius
+): CountedVertexBuffer {
+  gl.useProgram(program);
+  const vertexBuffer = gl.createBuffer();
+
+  let vertices: number[] = [];
+  const startingDegree = circleHalf === CircleHalf.LEFT ? 0 : 180;
+  const finalDegree = circleHalf === CircleHalf.LEFT ? 180 : 360;
+  for (let currentDegree = startingDegree; currentDegree <= finalDegree; currentDegree++) {
+    const currentRadian = degreeToRadian(currentDegree);
+
+    const outerVertexX = Math.sin(currentRadian);
+    const outerVertexY = Math.cos(currentRadian);
+    vertices = vertices.concat([
+      outerVertexX,
+      outerVertexY,
+    ]);
+    vertices = vertices.concat([
+      outerVertexX * (1 - arcWidth),
+      outerVertexY * (1 - arcWidth),
+    ]);
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+  if (!vertexBuffer) {
+    throw new Error('Could not init semicircle buffers');
+  }
+
+  return { buffer: vertexBuffer, vertexCount: vertices.length / DIMENSION };
+}
+
+type Point = {
+  x: number
+  y: number
+}
+
+function drawWithProgram(
+  gl: WebGLRenderingContext,
+  programInfo: CircleProgramInfo,
+  countedBuffer: CountedVertexBuffer,
+  position: Point,
+  scale: number,
+): void {
+  const { program, attribLocations, uniformLocations } = programInfo;
   gl.useProgram(program);
 
   const aspect = gl.canvas.width / gl.canvas.height;
@@ -94,25 +150,58 @@ function drawCircle(
   //   yet canvas clipspace goes from -1 to 1 in x and y directions regardless.
   // scale vector will also change the size of the circle
   //   by multiplying the vector positions by CIRCLE_RADIUS
-  gl.uniform2f(scaleVectorLocation, config.CIRCLE_RADIUS, aspect * config.CIRCLE_RADIUS);
+  gl.uniform2f(uniformLocations.scaleVector, scale, aspect * scale);
 
   // translation vector will move the circle along x and y axes
-  gl.uniform2f(translationVectorLocation, circlePosX, circlePosY);
+  gl.uniform2f(uniformLocations.translationVector, position.x, position.y);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  let aPosition = vertexPositionLocation;
+  gl.bindBuffer(gl.ARRAY_BUFFER, countedBuffer.buffer);
+  let aPosition = attribLocations.vertexPosition;
   gl.enableVertexAttribArray(aPosition);
   gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
 
   // Draw the polygons in the circle buffer
-  // TODO 722 here is a magic number - it should be retrieved from initCircleBuffer
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 722);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, countedBuffer.vertexCount);
+}
+
+function drawCircle(
+  gl: WebGLRenderingContext,
+  programInfo: CircleProgramInfo,
+  buffer: CountedVertexBuffer,
+  circlePosX: number,
+  circlePosY: number
+): void {
+  drawWithProgram(gl,
+    programInfo,
+    buffer,
+    { x: circlePosX, y: circlePosY },
+    config.CIRCLE_RADIUS,
+  )
+}
+
+function drawSemicircleArc(
+  gl: WebGLRenderingContext,
+  programInfo: CircleProgramInfo,
+  buffer: CountedVertexBuffer,
+  circleHalf: CircleHalf,
+): void {
+  drawWithProgram(gl,
+    programInfo,
+    buffer,
+    {
+      x: config.GOAL_OFFSET_X * (circleHalf === CircleHalf.LEFT ? 1 : -1),
+      y: 0, // centered at the vertical midpoint
+    },
+    config.SEMICIRCLE_ARC_RADIUS,
+  );
 }
 
 function drawScene(
   gl: WebGLRenderingContext,
   circlePInfo: CircleProgramInfo,
-  circleBuffers: WebGLBuffer,
+  circleBuffers: CountedVertexBuffer,
+  leftSemicircleArcBuffer: CountedVertexBuffer,
+  rightSemicircleArcBuffer: CountedVertexBuffer,
   state: State,
 ) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
@@ -125,24 +214,32 @@ function drawScene(
 
   // player1
   drawCircle(gl,
-    circlePInfo.program,
+    circlePInfo,
     circleBuffers,
-    circlePInfo.attribLocations.vertexPosition,
-    circlePInfo.uniformLocations.scaleVector,
-    circlePInfo.uniformLocations.translationVector,
     state.player1PosX,
     state.player1PosY,
   );
 
   // player2
   drawCircle(gl,
-    circlePInfo.program,
+    circlePInfo,
     circleBuffers,
-    circlePInfo.attribLocations.vertexPosition,
-    circlePInfo.uniformLocations.scaleVector,
-    circlePInfo.uniformLocations.translationVector,
     state.player2PosX,
     state.player2PosY,
+  );
+
+  // left goal post
+  drawSemicircleArc(gl,
+    circlePInfo,
+    leftSemicircleArcBuffer,
+    CircleHalf.LEFT
+  );
+
+  // right goal post
+  drawSemicircleArc(gl,
+    circlePInfo,
+    rightSemicircleArcBuffer,
+    CircleHalf.RIGHT
   );
 }
 
@@ -255,7 +352,10 @@ function initGame() {
   // initialize everything needed for the circle program
   const circleProgram = initShaderProgramOrFail(gl, circleVsSource, circleFsSource);
   const circleProgramInfo = initCircleProgramInfo(gl, circleProgram);
-  const circleBuffer = initCircleBuffer(gl, circleProgramInfo);
+  const { program } = circleProgramInfo;
+  const circleBuffer = initCircleBuffer(gl, circleProgram);
+  const leftSemicircleArcBuffer = initSemicircleArcBuffer(gl, program, CircleHalf.LEFT, config.SEMICIRCLE_ARC_WIDTH);
+  const rightSemicircleArcBuffer = initSemicircleArcBuffer(gl, program, CircleHalf.RIGHT, config.SEMICIRCLE_ARC_WIDTH);
 
   // initialize scene drawing / game engine variables
   const state: State = getInitialState();
@@ -272,6 +372,8 @@ function initGame() {
     drawScene(gl,
       circleProgramInfo,
       circleBuffer,
+      leftSemicircleArcBuffer,
+      rightSemicircleArcBuffer,
       state,
     );
 
