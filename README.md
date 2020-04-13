@@ -30,3 +30,7 @@ And then, after a few hours unsuccessfully trying to force an oval into circular
 Inspiring the move to more simple 2D operations rather than the more complex matrix operations from the first tutorial:
 
 * https://webglfundamentals.org/webgl/lessons/webgl-fundamentals.html
+
+This article helped me understand the collision detection and resolution:
+
+* https://gamedevelopment.tutsplus.com/tutorials/how-to-create-a-custom-2d-physics-engine-the-basics-and-impulse-resolution--gamedev-6331

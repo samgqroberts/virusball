@@ -69,7 +69,7 @@ function initCircleBuffer(
   const vertexBuffer = gl.createBuffer();
 
   let vertices: number[] = [];
-  for (let currentDegree = 0.0; currentDegree <= 360; currentDegree+=1) {
+  for (let currentDegree = 0.0; currentDegree <= 360; currentDegree++) {
     const currentRadian = degreeToRadian(currentDegree);
     // add a vertex on the circle's circumference, according to currentDegree
     vertices = vertices.concat([
@@ -172,13 +172,12 @@ function drawCircle(
   gl: WebGLRenderingContext,
   programInfo: CircleProgramInfo,
   buffer: CountedVertexBuffer,
-  circlePosX: number,
-  circlePosY: number
+  circlePos: Point,
 ): void {
   drawWithProgram(gl,
     programInfo,
     buffer,
-    { x: circlePosX, y: circlePosY },
+    circlePos,
     config.CIRCLE_RADIUS,
   )
 }
@@ -220,16 +219,14 @@ function drawScene(
   drawCircle(gl,
     circlePInfo,
     circleBuffers,
-    state.player1PosX,
-    state.player1PosY,
+    { x: state.player1PosX, y: state.player1PosY },
   );
 
   // player2
   drawCircle(gl,
     circlePInfo,
     circleBuffers,
-    state.player2PosX,
-    state.player2PosY,
+    { x: state.player2PosX, y: state.player2PosY },
   );
 
   // left goal post
@@ -259,6 +256,77 @@ function logFPS(state: State): void {
       console.log('frames in the past second:', state.frameCount - previousFrameCount);
       previousFrameCount = state.frameCount;
     }, 1000);
+  }
+}
+
+type Vector = {
+  x: number,
+  y: number,
+};
+
+/** An object describing a collision between two objects */
+type Manifold = {
+  penetration: number,
+  normal: Vector,
+};
+
+type Circle = {
+  position: Point,
+  radius: number,
+};
+
+function diffVector(point1: Point, point2: Point): Vector {
+  return { x: point2.x - point1.x, y: point2.y - point1.y };
+}
+
+function lengthSquared(vector: Vector): number {
+  return Math.pow(vector.x, 2) + Math.pow(vector.y, 2);
+}
+
+function length(vector: Vector): number {
+  return Math.sqrt(lengthSquared(vector));
+}
+
+function normalize(vector: Vector): Vector {
+  const l = length(vector);
+  return { x: vector.x / l, y: vector.y / l };
+}
+
+// TODO this collision detection only works if the circles have the same y position.
+//      I believe this is due to aspect scaling.
+//      We either have to consider that here, or have to have a better solution to that everywhere.
+function detectCollisionBetweenCircles(
+  circle1: Circle,
+  circle2: Circle,
+): Manifold | undefined {
+  // Vector from A to B
+  const n: Vector = diffVector(circle1.position, circle2.position);
+
+  let r: number = circle1.radius + circle2.radius
+  r *= r;
+
+  if (lengthSquared(n) > r) {
+    return undefined;
+  }
+
+  // Circles have collided, now compute manifold
+  const d: number = length(n) // perform actual sqrt
+
+  // If distance between circles is not zero
+  if (d !== 0) {
+    return {
+      // Distance is difference between radius and distance
+      penetration: r - d,
+      // Points from A to B, and is a unit vector
+      normal: normalize(n),
+    };
+  }
+
+  // Circles are on same position
+  return {
+    // Choose random (but consistent) values
+    penetration: circle1.radius,
+    normal: { x: 1, y: 2 },
   }
 }
 
@@ -304,6 +372,12 @@ function updatePlayerPositions(state: State, aspect: number): void {
   state.player1PosY += state.player1VelocityY;
   state.player2PosX += state.player2VelocityX;
   state.player2PosY += state.player2VelocityY;
+
+  // TODO this is wip: don't just console log these results, resolve the collision...
+  console.log(detectCollisionBetweenCircles(
+    { position: { x: state.player1PosX, y: state.player1PosY }, radius: config.CIRCLE_RADIUS },
+    { position: { x: state.player2PosX, y: state.player2PosY }, radius: config.CIRCLE_RADIUS },
+  ));
 }
 
 /**
