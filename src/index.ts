@@ -292,13 +292,21 @@ function normalize(vector: Vector): Vector {
   return { x: vector.x / l, y: vector.y / l };
 }
 
-// TODO this collision detection only works if the circles have the same y position.
-//      I believe this is due to aspect scaling.
-//      We either have to consider that here, or have to have a better solution to that everywhere.
+function correctPositionAspect(point: Point, aspect: number): Point {
+  return { x: point.x, y: point.y / aspect };
+}
+
+function correctCircleAspect(circle: Circle, aspect: number): Circle {
+  return { position: correctPositionAspect(circle.position, aspect), radius: circle.radius };
+}
+
 function detectCollisionBetweenCircles(
   circle1: Circle,
   circle2: Circle,
+  aspect: number
 ): Manifold | undefined {
+  circle1 = correctCircleAspect(circle1, aspect);
+  circle2 = correctCircleAspect(circle2, aspect);
   // Vector from A to B
   const n: Vector = diffVector(circle1.position, circle2.position);
 
@@ -329,7 +337,6 @@ function detectCollisionBetweenCircles(
     normal: { x: 1, y: 2 },
   }
 }
-
 
 /**
  * Updates the game state wrt user input (which keys are pressed in this frame).
@@ -377,6 +384,7 @@ function updatePlayerPositions(state: State, aspect: number): void {
   console.log(detectCollisionBetweenCircles(
     { position: { x: state.player1PosX, y: state.player1PosY }, radius: config.CIRCLE_RADIUS },
     { position: { x: state.player2PosX, y: state.player2PosY }, radius: config.CIRCLE_RADIUS },
+    aspect
   ));
 }
 
