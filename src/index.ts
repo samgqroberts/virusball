@@ -7,6 +7,7 @@ import circleFsSource from './circle_fragment.glsl';
 import { getUniformLocationOrFail, getWebglContext, initShaderProgramOrFail } from "./WebglUtils";
 import { getInitialState, State } from "./state";
 import { KeysCapture } from "./PressedKeys";
+import * as Geometry from './geometry';
 
 const DIMENSION = 2; // it's a 2D game - so we have two values per vertex
 
@@ -52,10 +53,6 @@ function initCircleProgramInfo(
   };
 }
 
-function degreeToRadian(degree: number): number {
-  return degree * Math.PI / 180;
-}
-
 type CountedVertexBuffer = {
   buffer: WebGLBuffer,
   vertexCount: number,
@@ -70,7 +67,7 @@ function initCircleBuffer(
 
   let vertices: number[] = [];
   for (let currentDegree = 0.0; currentDegree <= 360; currentDegree++) {
-    const currentRadian = degreeToRadian(currentDegree);
+    const currentRadian = Geometry.degreeToRadian(currentDegree);
     // add a vertex on the circle's circumference, according to currentDegree
     vertices = vertices.concat([
       Math.sin(currentRadian),
@@ -106,7 +103,7 @@ function initSemicircleArcBuffer(
   const startingDegree = circleHalf === CircleHalf.LEFT ? 0 : 180;
   const finalDegree = circleHalf === CircleHalf.LEFT ? 180 : 360;
   for (let currentDegree = startingDegree; currentDegree <= finalDegree; currentDegree++) {
-    const currentRadian = degreeToRadian(currentDegree);
+    const currentRadian = Geometry.degreeToRadian(currentDegree);
 
     const outerVertexX = Math.sin(currentRadian);
     const outerVertexY = Math.cos(currentRadian);
@@ -130,16 +127,11 @@ function initSemicircleArcBuffer(
   return { buffer: vertexBuffer, vertexCount: vertices.length / DIMENSION };
 }
 
-type Point = {
-  x: number
-  y: number
-}
-
 function drawWithProgram(
   gl: WebGLRenderingContext,
   programInfo: CircleProgramInfo,
   countedBuffer: CountedVertexBuffer,
-  position: Point,
+  position: Geometry.Point,
   scale: number,
 ): void {
   const { program, attribLocations, uniformLocations } = programInfo;
@@ -172,7 +164,7 @@ function drawCircle(
   gl: WebGLRenderingContext,
   programInfo: CircleProgramInfo,
   buffer: CountedVertexBuffer,
-  circlePos: Point,
+  circlePos: Geometry.Point,
 ): void {
   drawWithProgram(gl,
     programInfo,
@@ -259,66 +251,31 @@ function logFPS(state: State): void {
   }
 }
 
-type Vector = {
-  x: number,
-  y: number,
-};
-
 /** An object describing a collision between two objects */
 type Manifold = {
   penetration: number,
-  normal: Vector,
+  normal: Geometry.Vector,
 };
-
-type Circle = {
-  position: Point,
-  radius: number,
-};
-
-function diffVector(point1: Point, point2: Point): Vector {
-  return { x: point2.x - point1.x, y: point2.y - point1.y };
-}
-
-function lengthSquared(vector: Vector): number {
-  return Math.pow(vector.x, 2) + Math.pow(vector.y, 2);
-}
-
-function length(vector: Vector): number {
-  return Math.sqrt(lengthSquared(vector));
-}
-
-function normalize(vector: Vector): Vector {
-  const l = length(vector);
-  return { x: vector.x / l, y: vector.y / l };
-}
-
-function correctPositionAspect(point: Point, aspect: number): Point {
-  return { x: point.x, y: point.y / aspect };
-}
-
-function correctCircleAspect(circle: Circle, aspect: number): Circle {
-  return { position: correctPositionAspect(circle.position, aspect), radius: circle.radius };
-}
 
 function detectCollisionBetweenCircles(
-  circle1: Circle,
-  circle2: Circle,
+  circle1: Geometry.Circle,
+  circle2: Geometry.Circle,
   aspect: number
 ): Manifold | undefined {
-  circle1 = correctCircleAspect(circle1, aspect);
-  circle2 = correctCircleAspect(circle2, aspect);
+  circle1 = Geometry.correctCircleAspect(circle1, aspect);
+  circle2 = Geometry.correctCircleAspect(circle2, aspect);
   // Vector from A to B
-  const n: Vector = diffVector(circle1.position, circle2.position);
+  const n: Geometry.Vector = Geometry.diffVector(circle1.position, circle2.position);
 
   let r: number = circle1.radius + circle2.radius
   r *= r;
 
-  if (lengthSquared(n) > r) {
+  if (Geometry.lengthSquared(n) > r) {
     return undefined;
   }
 
   // Circles have collided, now compute manifold
-  const d: number = length(n) // perform actual sqrt
+  const d: number = Geometry.length(n) // perform actual sqrt
 
   // If distance between circles is not zero
   if (d !== 0) {
@@ -326,7 +283,7 @@ function detectCollisionBetweenCircles(
       // Distance is difference between radius and distance
       penetration: r - d,
       // Points from A to B, and is a unit vector
-      normal: normalize(n),
+      normal: Geometry.normalize(n),
     };
   }
 
@@ -338,104 +295,28 @@ function detectCollisionBetweenCircles(
   }
 }
 
-function dotProduct(vector1: Vector, vector2: Vector): number {
+function dotProduct(vector1: Geometry.Vector, vector2: Geometry.Vector): number {
   return vector1.x * vector2.x + vector1.y * vector2.y;
 }
 
 type CollisionInfo = {
-  velocity: Vector,
+  velocity: Geometry.Vector,
   restitution: number,
   mass: number,
 }
 
-interface VectorMultiplication {
-  (factor1: Vector, factor2: number): Vector;
-  (factor1: number, factor2: Vector): Vector;
-  (factor1: Vector, factor2: Vector): Vector;
-}
-const vectorMultiplication: VectorMultiplication = (factor1: Vector | number, factor2: Vector | number) => {
-  if (typeof factor1 === 'number') {
-    if (typeof factor2 !== 'number') {
-      return { x: factor1 * factor2.x, y: factor1 * factor2.y };
-    }
-  } else {
-    if (typeof factor2 === 'number') {
-      return { x: factor1.x * factor2, y: factor1.y * factor2 };
-    }
-    return { x: factor1.x * factor2.x, y: factor1.y * factor2.y };
-  }
-  throw new Error(`vectorDivision: Cannot multiply factor1 ${factor1} and factor2 ${factor2}`);
-};
-
-interface VectorAddition {
-  (addend1: Vector, addend2: number): Vector;
-  (addend1: number, addend2: Vector): Vector;
-  (addend1: Vector, addend2: Vector): Vector;
-}
-const vectorAddition: VectorAddition = (addend1: Vector | number, addend2: Vector | number) => {
-  if (typeof addend1 === 'number') {
-    if (typeof addend2 !== 'number') {
-      return { x: addend1 + addend2.x, y: addend1 + addend2.y };
-    }
-  } else {
-    if (typeof addend2 === 'number') {
-      return { x: addend1.x + addend2, y: addend1.y + addend2 };
-    }
-    return { x: addend1.x + addend2.x, y: addend1.y + addend2.y };
-  }
-  throw new Error(`vectorDivision: Cannot add addend1 ${addend1} and addend2 ${addend2}`);
-};
-
-interface VectorDivision {
-  (dividend: Vector, divisor: number): Vector;
-  (dividend: number, divisor: Vector): Vector;
-  (dividend: Vector, divisor: Vector): Vector;
-}
-const vectorDivision: VectorDivision = (dividend: Vector | number, divisor: Vector | number) => {
-  if (typeof dividend === 'number') {
-    if (typeof divisor !== 'number') {
-      return { x: dividend / divisor.x, y: dividend / divisor.y };
-    }
-  } else {
-    if (typeof divisor === 'number') {
-      return { x: dividend.x / divisor, y: dividend.y / divisor };
-    }
-    return { x: dividend.x / divisor.x, y: dividend.y / divisor.y };
-  }
-  throw new Error(`vectorDivision: Cannot divide dividend ${dividend} by divisor ${divisor}`);
-};
-
-interface VectorSubtraction {
-  (minuend: Vector, subtrahend: number): Vector;
-  (minuend: number, subtrahend: Vector): Vector;
-  (minuend: Vector, subtrahend: Vector): Vector;
-}
-const vectorSubtraction: VectorSubtraction = (minuend: Vector | number, subtrahend: Vector | number) => {
-  if (typeof minuend === 'number') {
-    if (typeof subtrahend !== 'number') {
-      return { x: minuend - subtrahend.x, y: minuend - subtrahend.y };
-    }
-  } else {
-    if (typeof subtrahend === 'number') {
-      return { x: minuend.x - subtrahend, y: minuend.y - subtrahend };
-    }
-    return { x: minuend.x - subtrahend.x, y: minuend.y - subtrahend.y };
-  }
-  throw new Error(`vectorDivision: Cannot subtract minuen ${minuend} by subtrahend ${subtrahend}`);
-};
-
 type CollisionResolution = {
-  velocity1: Vector,
-  velocity2: Vector,
+  velocity1: Geometry.Vector,
+  velocity2: Geometry.Vector,
 }
 
 function resolveCollisionBetweenCircles(
   obj1: CollisionInfo,
   obj2: CollisionInfo,
-  normal: Vector,
+  normal: Geometry.Vector,
 ): CollisionResolution | undefined {
   // Calculate relative velocity
-  const rv: Vector = diffVector(obj1.velocity, obj2.velocity);
+  const rv: Geometry.Vector = Geometry.diffVector(obj1.velocity, obj2.velocity);
  
   // Calculate relative velocity in terms of the normal direction
   const velAlongNormal: number = dotProduct(rv, normal);
@@ -453,10 +334,10 @@ function resolveCollisionBetweenCircles(
   j /= 1 / obj1.mass + 1 / obj2.mass
  
   // Apply impulse
-  const impulse: Vector = vectorMultiplication(j, normal);
+  const impulse: Geometry.Vector = Geometry.vectorMultiplication(j, normal);
   return {
-    velocity1: vectorSubtraction(obj1.velocity, vectorMultiplication(1 / obj1.mass, impulse)),
-    velocity2: vectorAddition(obj2.velocity, vectorMultiplication(1 / obj2.mass, impulse)),
+    velocity1: Geometry.vectorSubtraction(obj1.velocity, Geometry.vectorMultiplication(1 / obj1.mass, impulse)),
+    velocity2: Geometry.vectorAddition(obj2.velocity, Geometry.vectorMultiplication(1 / obj2.mass, impulse)),
   };
 }
 
