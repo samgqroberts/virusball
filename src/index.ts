@@ -338,6 +338,128 @@ function detectCollisionBetweenCircles(
   }
 }
 
+function dotProduct(vector1: Vector, vector2: Vector): number {
+  return vector1.x * vector2.x + vector1.y * vector2.y;
+}
+
+type CollisionInfo = {
+  velocity: Vector,
+  restitution: number,
+  mass: number,
+}
+
+interface VectorMultiplication {
+  (factor1: Vector, factor2: number): Vector;
+  (factor1: number, factor2: Vector): Vector;
+  (factor1: Vector, factor2: Vector): Vector;
+}
+const vectorMultiplication: VectorMultiplication = (factor1: Vector | number, factor2: Vector | number) => {
+  if (typeof factor1 === 'number') {
+    if (typeof factor2 !== 'number') {
+      return { x: factor1 * factor2.x, y: factor1 * factor2.y };
+    }
+  } else {
+    if (typeof factor2 === 'number') {
+      return { x: factor1.x * factor2, y: factor1.y * factor2 };
+    }
+    return { x: factor1.x * factor2.x, y: factor1.y * factor2.y };
+  }
+  throw new Error(`vectorDivision: Cannot multiply factor1 ${factor1} and factor2 ${factor2}`);
+};
+
+interface VectorAddition {
+  (addend1: Vector, addend2: number): Vector;
+  (addend1: number, addend2: Vector): Vector;
+  (addend1: Vector, addend2: Vector): Vector;
+}
+const vectorAddition: VectorAddition = (addend1: Vector | number, addend2: Vector | number) => {
+  if (typeof addend1 === 'number') {
+    if (typeof addend2 !== 'number') {
+      return { x: addend1 + addend2.x, y: addend1 + addend2.y };
+    }
+  } else {
+    if (typeof addend2 === 'number') {
+      return { x: addend1.x + addend2, y: addend1.y + addend2 };
+    }
+    return { x: addend1.x + addend2.x, y: addend1.y + addend2.y };
+  }
+  throw new Error(`vectorDivision: Cannot add addend1 ${addend1} and addend2 ${addend2}`);
+};
+
+interface VectorDivision {
+  (dividend: Vector, divisor: number): Vector;
+  (dividend: number, divisor: Vector): Vector;
+  (dividend: Vector, divisor: Vector): Vector;
+}
+const vectorDivision: VectorDivision = (dividend: Vector | number, divisor: Vector | number) => {
+  if (typeof dividend === 'number') {
+    if (typeof divisor !== 'number') {
+      return { x: dividend / divisor.x, y: dividend / divisor.y };
+    }
+  } else {
+    if (typeof divisor === 'number') {
+      return { x: dividend.x / divisor, y: dividend.y / divisor };
+    }
+    return { x: dividend.x / divisor.x, y: dividend.y / divisor.y };
+  }
+  throw new Error(`vectorDivision: Cannot divide dividend ${dividend} by divisor ${divisor}`);
+};
+
+interface VectorSubtraction {
+  (minuend: Vector, subtrahend: number): Vector;
+  (minuend: number, subtrahend: Vector): Vector;
+  (minuend: Vector, subtrahend: Vector): Vector;
+}
+const vectorSubtraction: VectorSubtraction = (minuend: Vector | number, subtrahend: Vector | number) => {
+  if (typeof minuend === 'number') {
+    if (typeof subtrahend !== 'number') {
+      return { x: minuend - subtrahend.x, y: minuend - subtrahend.y };
+    }
+  } else {
+    if (typeof subtrahend === 'number') {
+      return { x: minuend.x - subtrahend, y: minuend.y - subtrahend };
+    }
+    return { x: minuend.x - subtrahend.x, y: minuend.y - subtrahend.y };
+  }
+  throw new Error(`vectorDivision: Cannot subtract minuen ${minuend} by subtrahend ${subtrahend}`);
+};
+
+type CollisionResolution = {
+  velocity1: Vector,
+  velocity2: Vector,
+}
+
+function resolveCollisionBetweenCircles(
+  obj1: CollisionInfo,
+  obj2: CollisionInfo,
+  normal: Vector,
+): CollisionResolution | undefined {
+  // Calculate relative velocity
+  const rv: Vector = diffVector(obj1.velocity, obj2.velocity);
+ 
+  // Calculate relative velocity in terms of the normal direction
+  const velAlongNormal: number = dotProduct(rv, normal);
+ 
+  // Do not resolve if velocities are separating
+  if (velAlongNormal > 0) {
+    return;
+  }
+ 
+  // Calculate restitution
+  const e: number = Math.min(obj1.restitution, obj2.restitution);
+ 
+  // Calculate impulse scalar
+  let j: number = -(1 + e) * velAlongNormal
+  j /= 1 / obj1.mass + 1 / obj2.mass
+ 
+  // Apply impulse
+  const impulse: Vector = vectorMultiplication(j, normal);
+  return {
+    velocity1: vectorSubtraction(obj1.velocity, vectorMultiplication(1 / obj1.mass, impulse)),
+    velocity2: vectorAddition(obj2.velocity, vectorMultiplication(1 / obj2.mass, impulse)),
+  };
+}
+
 /**
  * Updates the game state wrt user input (which keys are pressed in this frame).
  * @param state the game state to update. state is assumed to be mutable and its fields will be
@@ -380,12 +502,24 @@ function updatePlayerPositions(state: State, aspect: number): void {
   state.player2PosX += state.player2VelocityX;
   state.player2PosY += state.player2VelocityY;
 
-  // TODO this is wip: don't just console log these results, resolve the collision...
-  console.log(detectCollisionBetweenCircles(
+  const detectionResult = detectCollisionBetweenCircles(
     { position: { x: state.player1PosX, y: state.player1PosY }, radius: config.CIRCLE_RADIUS },
     { position: { x: state.player2PosX, y: state.player2PosY }, radius: config.CIRCLE_RADIUS },
     aspect
-  ));
+  );
+  if (detectionResult) {
+    const resolutionResult = resolveCollisionBetweenCircles(
+      { velocity: { x: state.player1VelocityX, y: state.player1VelocityY }, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
+      { velocity: { x: state.player2VelocityX, y: state.player2VelocityY }, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
+      detectionResult.normal,
+    );
+    if (resolutionResult) {
+      state.player1VelocityX = resolutionResult.velocity1.x;
+      state.player1VelocityY = resolutionResult.velocity1.y;
+      state.player2VelocityX = resolutionResult.velocity2.x;
+      state.player2VelocityY = resolutionResult.velocity2.y;
+    }
+  }
 }
 
 /**
@@ -400,6 +534,9 @@ function updatePlayerPositions(state: State, aspect: number): void {
  * @param negativeKey keycode for movement in negative direction
  * @param positiveKey keycode for movement in positive direction
  */
+// TODO drag rate is currently liable to change velocity direction.
+//      this may be due to the fact that this function applies drag separately to each velocity component.
+//      it will have to consider both components in order to drag while preserving direction.
 function updateComponentVelocity(
   currentVelocity: number,
   maxVelocity: number,

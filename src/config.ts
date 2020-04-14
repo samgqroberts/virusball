@@ -19,6 +19,8 @@ export default {
   PLAYER_REVERSE_ACCELERATION: 0.04,
   PLAYER_DRAG: 0.01,
   PLAYER_MAX_SPEED: 0.017,
+  PLAYER_RESTITUTION: 0.8,
+  PLAYER_MASS: 2,
 
   // for debugging
   LOG_FPS: false,
