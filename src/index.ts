@@ -1,8 +1,6 @@
 import * as PressedKeys from './PressedKeys';
 import config from './config';
-// @ts-ignore
 import circleVsSource from './circle_vertex.glsl';
-// @ts-ignore
 import circleFsSource from './circle_fragment.glsl';
 import { getUniformLocationOrFail, getWebglContext, initShaderProgramOrFail } from "./WebglUtils";
 import { getInitialState, State } from "./state";
