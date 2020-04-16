@@ -1,7 +1,7 @@
 import * as PressedKeys from './PressedKeys';
 import config from './config';
-import circleVsSource from './circle_vertex.glsl';
-import circleFsSource from './circle_fragment.glsl';
+import shape2dVsSource from './shape2d_vertex.glsl';
+import shape2dFsSource from './shape2d_fragment.glsl';
 import { getUniformLocationOrFail, getWebglContext, initShaderProgramOrFail } from "./WebglUtils";
 import { getInitialState, State } from "./state";
 import { KeysCapture } from "./PressedKeys";
@@ -21,10 +21,7 @@ function getAspect(gl: WebGLRenderingContext): number {
   return gl.canvas.width / gl.canvas.height;
 }
 
-// TODO rename this program and program info.
-//      it no longer only relates to the circle.
-//      it applies to any 2d shape with scale and translation vectors.
-type CircleProgramInfo = {
+type Shape2DProgramInfo = {
   program: WebGLProgram,
   attribLocations: {
     vertexPosition: number,
@@ -35,18 +32,18 @@ type CircleProgramInfo = {
   }
 }
 
-function initCircleProgramInfo(
+function initShape2dProgramInfo(
   gl: WebGLRenderingContext,
-  circleProgram: WebGLProgram
-): CircleProgramInfo {
+  shape2dProgram: WebGLProgram
+): Shape2DProgramInfo {
   return {
-    program: circleProgram,
+    program: shape2dProgram,
     attribLocations: {
-      vertexPosition: gl.getAttribLocation(circleProgram, 'aPosition'),
+      vertexPosition: gl.getAttribLocation(shape2dProgram, 'aPosition'),
     },
     uniformLocations: {
-      scaleVector: getUniformLocationOrFail(gl, circleProgram, 'uScaleVector'),
-      translationVector: getUniformLocationOrFail(gl, circleProgram, 'uTranslationVector'),
+      scaleVector: getUniformLocationOrFail(gl, shape2dProgram, 'uScaleVector'),
+      translationVector: getUniformLocationOrFail(gl, shape2dProgram, 'uTranslationVector'),
     },
   };
 }
@@ -127,7 +124,7 @@ function initSemicircleArcBuffer(
 
 function drawWithProgram(
   gl: WebGLRenderingContext,
-  programInfo: CircleProgramInfo,
+  programInfo: Shape2DProgramInfo,
   countedBuffer: CountedVertexBuffer,
   position: Geometry.Point,
   scale: number,
@@ -160,7 +157,7 @@ function drawWithProgram(
 
 function drawCircle(
   gl: WebGLRenderingContext,
-  programInfo: CircleProgramInfo,
+  programInfo: Shape2DProgramInfo,
   buffer: CountedVertexBuffer,
   circlePos: Geometry.Point,
 ): void {
@@ -174,7 +171,7 @@ function drawCircle(
 
 function drawSemicircleArc(
   gl: WebGLRenderingContext,
-  programInfo: CircleProgramInfo,
+  programInfo: Shape2DProgramInfo,
   buffer: CountedVertexBuffer,
   circleHalf: CircleHalf,
 ): void {
@@ -191,7 +188,7 @@ function drawSemicircleArc(
 
 function drawScene(
   gl: WebGLRenderingContext,
-  circlePInfo: CircleProgramInfo,
+  circlePInfo: Shape2DProgramInfo,
   circleBuffers: CountedVertexBuffer,
   leftSemicircleArcBuffer: CountedVertexBuffer,
   rightSemicircleArcBuffer: CountedVertexBuffer,
@@ -460,10 +457,10 @@ function initGame() {
   const gl = getWebglContext('canvas');
 
   // initialize everything needed for the circle program
-  const circleProgram = initShaderProgramOrFail(gl, circleVsSource, circleFsSource);
-  const circleProgramInfo = initCircleProgramInfo(gl, circleProgram);
-  const { program } = circleProgramInfo;
-  const circleBuffer = initCircleBuffer(gl, circleProgram);
+  const shape2dProgram = initShaderProgramOrFail(gl, shape2dVsSource, shape2dFsSource);
+  const shape2dProgramInfo = initShape2dProgramInfo(gl, shape2dProgram);
+  const { program } = shape2dProgramInfo;
+  const circleBuffer = initCircleBuffer(gl, shape2dProgram);
   const leftSemicircleArcBuffer = initSemicircleArcBuffer(gl, program, CircleHalf.LEFT, config.SEMICIRCLE_ARC_WIDTH);
   const rightSemicircleArcBuffer = initSemicircleArcBuffer(gl, program, CircleHalf.RIGHT, config.SEMICIRCLE_ARC_WIDTH);
 
@@ -480,7 +477,7 @@ function initGame() {
     updatePlayerPositions(state, getAspect(gl));
 
     drawScene(gl,
-      circleProgramInfo,
+      shape2dProgramInfo,
       circleBuffer,
       leftSemicircleArcBuffer,
       rightSemicircleArcBuffer,
