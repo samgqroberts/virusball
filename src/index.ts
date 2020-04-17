@@ -27,6 +27,7 @@ type Shape2DProgramInfo = {
     vertexPosition: number,
   },
   uniformLocations: {
+    colorVector: WebGLUniformLocation,
     scaleVector: WebGLUniformLocation,
     translationVector: WebGLUniformLocation,
   }
@@ -42,6 +43,7 @@ function initShape2dProgramInfo(
       vertexPosition: gl.getAttribLocation(shape2dProgram, 'aPosition'),
     },
     uniformLocations: {
+      colorVector: getUniformLocationOrFail(gl, shape2dProgram, 'uColorVector'),
       scaleVector: getUniformLocationOrFail(gl, shape2dProgram, 'uScaleVector'),
       translationVector: getUniformLocationOrFail(gl, shape2dProgram, 'uTranslationVector'),
     },
@@ -95,8 +97,8 @@ function initSemicircleArcBuffer(
   const vertexBuffer = gl.createBuffer();
 
   let vertices: number[] = [];
-  const startingDegree = circleHalf === CircleHalf.LEFT ? 0 : 180;
-  const finalDegree = circleHalf === CircleHalf.LEFT ? 180 : 360;
+  const startingDegree = circleHalf === CircleHalf.RIGHT ? 0 : 180;
+  const finalDegree = circleHalf === CircleHalf.RIGHT ? 180 : 360;
   for (let currentDegree = startingDegree; currentDegree <= finalDegree; currentDegree++) {
     const currentRadian = Geometry.degreeToRadian(currentDegree);
 
@@ -122,12 +124,20 @@ function initSemicircleArcBuffer(
   return { buffer: vertexBuffer, vertexCount: vertices.length / DIMENSION };
 }
 
+type Color = {
+  red: number,
+  green: number,
+  blue: number,
+  alpha: number,
+}
+
 function drawWithProgram(
   gl: WebGLRenderingContext,
   programInfo: Shape2DProgramInfo,
   countedBuffer: CountedVertexBuffer,
   position: Geometry.Point,
   scale: number,
+  color: Color,
 ): void {
   const { program, attribLocations, uniformLocations } = programInfo;
   gl.useProgram(program);
@@ -146,6 +156,9 @@ function drawWithProgram(
   // translation vector will move the circle along x and y axes
   gl.uniform2f(uniformLocations.translationVector, position.x, position.y);
 
+  // the color vector... what could that do?
+  gl.uniform4f(uniformLocations.colorVector, color.red, color.green, color.blue, color.alpha);
+
   gl.bindBuffer(gl.ARRAY_BUFFER, countedBuffer.buffer);
   let aPosition = attribLocations.vertexPosition;
   gl.enableVertexAttribArray(aPosition);
@@ -160,12 +173,14 @@ function drawCircle(
   programInfo: Shape2DProgramInfo,
   buffer: CountedVertexBuffer,
   circlePos: Geometry.Point,
+  color: Color,
 ): void {
   drawWithProgram(gl,
     programInfo,
     buffer,
     circlePos,
     config.CIRCLE_RADIUS,
+    color,
   )
 }
 
@@ -173,16 +188,15 @@ function drawSemicircleArc(
   gl: WebGLRenderingContext,
   programInfo: Shape2DProgramInfo,
   buffer: CountedVertexBuffer,
-  circleHalf: CircleHalf,
+  position: Geometry.Point,
+  color: Color,
 ): void {
   drawWithProgram(gl,
     programInfo,
     buffer,
-    {
-      x: config.GOAL_OFFSET_X * (circleHalf === CircleHalf.LEFT ? 1 : -1),
-      y: 0, // centered at the vertical midpoint
-    },
+    position,
     config.SEMICIRCLE_ARC_RADIUS,
+    color
   );
 }
 
@@ -207,6 +221,7 @@ function drawScene(
     circlePInfo,
     circleBuffers,
     { x: state.player1PosX, y: state.player1PosY },
+    config.PLAYER_1_COLOR,
   );
 
   // player2
@@ -214,20 +229,23 @@ function drawScene(
     circlePInfo,
     circleBuffers,
     { x: state.player2PosX, y: state.player2PosY },
+    config.PLAYER_2_COLOR
   );
 
   // left goal post
   drawSemicircleArc(gl,
     circlePInfo,
     leftSemicircleArcBuffer,
-    CircleHalf.LEFT
+    { x: -config.GOAL_OFFSET_X, y: 0 },
+    config.PLAYER_1_COLOR,
   );
 
   // right goal post
   drawSemicircleArc(gl,
     circlePInfo,
     rightSemicircleArcBuffer,
-    CircleHalf.RIGHT
+    { x: config.GOAL_OFFSET_X, y: 0 },
+    config.PLAYER_2_COLOR,
   );
 }
 

@@ -14,6 +14,19 @@ export default {
   PLAYER_2_STARTING_X: 0.2,
   PLAYER_2_STARTING_Y: 0,
 
+  PLAYER_1_COLOR: {
+    red: 1.0,
+    green: 0.0,
+    blue: 0.0,
+    alpha: 1.0
+  },
+  PLAYER_2_COLOR: {
+    red: 0.0,
+    green: 0.0,
+    blue: 1.0,
+    alpha: 1.0
+  },
+
   // how much to change player velocity per second while player has a key pressed
   PLAYER_ACCELERATION: 0.02,
   PLAYER_REVERSE_ACCELERATION: 0.04,
