@@ -2,19 +2,16 @@ export function degreeToRadian(degree: number): number {
   return degree * Math.PI / 180;
 }
 
-export type Point = {
-  x: number
-  y: number
-}
+export type Vector = {
+  x: number,
+  y: number,
+};
+
+export type Point = Vector;
 
 export type Circle = {
   position: Point,
   radius: number,
-};
-
-export type Vector = {
-  x: number,
-  y: number,
 };
 
 export function diffVector(point1: Point, point2: Point): Vector {
@@ -117,3 +114,7 @@ export const vectorSubtraction: VectorSubtraction = (minuend: Vector | number, s
   }
   throw new Error(`vectorDivision: Cannot subtract minuen ${minuend} by subtrahend ${subtrahend}`);
 };
+
+export function dotProduct(vector1: Vector, vector2: Vector): number {
+  return vector1.x * vector2.x + vector1.y * vector2.y;
+}

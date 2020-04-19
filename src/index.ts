@@ -1,12 +1,13 @@
-import * as PressedKeys from './PressedKeys';
 import config from './config';
-import shape2dVsSource from './shape2d_vertex.glsl';
-import shape2dFsSource from './shape2d_fragment.glsl';
-import { getUniformLocationOrFail, getWebglContext, initShaderProgramOrFail } from "./WebglUtils";
-import { getInitialState, State } from "./state";
-import { KeysCapture } from "./PressedKeys";
 import * as Geometry from './geometry';
 import { KeyMappings } from './models';
+import * as Physics from './physics';
+import * as PressedKeys from './PressedKeys';
+import { KeysCapture } from "./PressedKeys";
+import shape2dFsSource from './shape2d_fragment.glsl';
+import shape2dVsSource from './shape2d_vertex.glsl';
+import { getInitialState, State } from "./state";
+import { getUniformLocationOrFail, getWebglContext, initShaderProgramOrFail } from "./WebglUtils";
 
 const DIMENSION = 2; // it's a 2D game - so we have two values per vertex
 
@@ -265,96 +266,6 @@ function logFPS(state: State): void {
   }
 }
 
-/** An object describing a collision between two objects */
-type Manifold = {
-  penetration: number,
-  normal: Geometry.Vector,
-};
-
-function detectCollisionBetweenCircles(
-  circle1: Geometry.Circle,
-  circle2: Geometry.Circle,
-  aspect: number
-): Manifold | undefined {
-  circle1 = Geometry.correctCircleAspect(circle1, aspect);
-  circle2 = Geometry.correctCircleAspect(circle2, aspect);
-  // Vector from A to B
-  const n: Geometry.Vector = Geometry.diffVector(circle1.position, circle2.position);
-
-  let r: number = circle1.radius + circle2.radius
-  r *= r;
-
-  if (Geometry.lengthSquared(n) > r) {
-    return undefined;
-  }
-
-  // Circles have collided, now compute manifold
-  const d: number = Geometry.length(n) // perform actual sqrt
-
-  // If distance between circles is not zero
-  if (d !== 0) {
-    return {
-      // Distance is difference between radius and distance
-      penetration: r - d,
-      // Points from A to B, and is a unit vector
-      normal: Geometry.normalize(n),
-    };
-  }
-
-  // Circles are on same position
-  return {
-    // Choose random (but consistent) values
-    penetration: circle1.radius,
-    normal: { x: 1, y: 2 },
-  }
-}
-
-function dotProduct(vector1: Geometry.Vector, vector2: Geometry.Vector): number {
-  return vector1.x * vector2.x + vector1.y * vector2.y;
-}
-
-type CollisionInfo = {
-  velocity: Geometry.Vector,
-  restitution: number,
-  mass: number,
-}
-
-type CollisionResolution = {
-  velocity1: Geometry.Vector,
-  velocity2: Geometry.Vector,
-}
-
-function resolveCollisionBetweenCircles(
-  obj1: CollisionInfo,
-  obj2: CollisionInfo,
-  normal: Geometry.Vector,
-): CollisionResolution | undefined {
-  // Calculate relative velocity
-  const rv: Geometry.Vector = Geometry.diffVector(obj1.velocity, obj2.velocity);
- 
-  // Calculate relative velocity in terms of the normal direction
-  const velAlongNormal: number = dotProduct(rv, normal);
- 
-  // Do not resolve if velocities are separating
-  if (velAlongNormal > 0) {
-    return;
-  }
- 
-  // Calculate restitution
-  const e: number = Math.min(obj1.restitution, obj2.restitution);
- 
-  // Calculate impulse scalar
-  let j: number = -(1 + e) * velAlongNormal
-  j /= 1 / obj1.mass + 1 / obj2.mass
- 
-  // Apply impulse
-  const impulse: Geometry.Vector = Geometry.vectorMultiplication(j, normal);
-  return {
-    velocity1: Geometry.vectorSubtraction(obj1.velocity, Geometry.vectorMultiplication(1 / obj1.mass, impulse)),
-    velocity2: Geometry.vectorAddition(obj2.velocity, Geometry.vectorMultiplication(1 / obj2.mass, impulse)),
-  };
-}
-
 /**
  * Updates the game state wrt user input (which keys are pressed in this frame).
  * @param state the game state to update. state is assumed to be mutable and its fields will be
@@ -393,13 +304,13 @@ function updatePlayerPositions(state: State, aspect: number): void {
   state.player1Pos = Geometry.vectorAddition(state.player1Pos, state.player1Velocity);
   state.player2Pos = Geometry.vectorAddition(state.player2Pos, state.player2Velocity);
 
-  const detectionResult = detectCollisionBetweenCircles(
+  const detectionResult = Physics.detectCollisionBetweenCircles(
     { position: state.player1Pos, radius: config.CIRCLE_RADIUS },
     { position: state.player2Pos, radius: config.CIRCLE_RADIUS },
     aspect
   );
   if (detectionResult) {
-    const resolutionResult = resolveCollisionBetweenCircles(
+    const resolutionResult = Physics.resolveCollisionBetweenCircles(
       { velocity: state.player1Velocity, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
       { velocity: state.player2Velocity, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
       detectionResult.normal,
