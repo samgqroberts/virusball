@@ -6,6 +6,7 @@ import { getUniformLocationOrFail, getWebglContext, initShaderProgramOrFail } fr
 import { getInitialState, State } from "./state";
 import { KeysCapture } from "./PressedKeys";
 import * as Geometry from './geometry';
+import { KeyMappings } from './models';
 
 const DIMENSION = 2; // it's a 2D game - so we have two values per vertex
 
@@ -220,7 +221,7 @@ function drawScene(
   drawCircle(gl,
     circlePInfo,
     circleBuffers,
-    { x: state.player1PosX, y: state.player1PosY },
+    state.player1Pos,
     config.PLAYER_1_COLOR,
   );
 
@@ -228,7 +229,7 @@ function drawScene(
   drawCircle(gl,
     circlePInfo,
     circleBuffers,
-    { x: state.player2PosX, y: state.player2PosY },
+    state.player2Pos,
     config.PLAYER_2_COLOR
   );
 
@@ -361,7 +362,7 @@ function resolveCollisionBetweenCircles(
  * @param aspect the scale aspect of the canvas (width / height), to correct movement
  */
 function updatePlayerPositions(state: State, aspect: number): void {
-  const { PLAYER_ACCELERATION, PLAYER_REVERSE_ACCELERATION, PLAYER_DRAG, PLAYER_MAX_SPEED } = config;
+  const { PLAYER_ACCELERATION, PLAYER_REVERSE_ACCELERATION, PLAYER_DRAG, PLAYER_MAX_SPEED, PLAYER_1_KEY_MAPPINGS, PLAYER_2_KEY_MAPPINGS } = config;
   // PLAYER_ACCELERATION is measured per second, so multiply by how many seconds have passed
   //   to determine how much to change velocity
   const deltaTime = state.currentFrameTimestamp - state.previousFrameTimestamp;
@@ -372,103 +373,152 @@ function updatePlayerPositions(state: State, aspect: number): void {
   const keys = PressedKeys.capture();
 
   // wrapper to capture current-frame constants
-  const updateVelocityFn = (velocity: number, negativeKey: string, positiveKey: string, aspectMultiplier: number = 1) =>
-    updateComponentVelocity(
+  const updateVelocityFn = (velocity: Geometry.Vector, keyMappings: KeyMappings) =>
+    updateVelocity(
       velocity,
-      PLAYER_MAX_SPEED * aspectMultiplier,
-      acceleration * aspectMultiplier,
-      reverseAcceleration * aspectMultiplier,
-      drag * aspectMultiplier,
+      PLAYER_MAX_SPEED,
+      acceleration,
+      reverseAcceleration,
+      drag,
+      aspect,
       keys,
-      negativeKey,
-      positiveKey,
+      keyMappings
     );
 
   // update velocities
-  state.player1VelocityX = updateVelocityFn(state.player1VelocityX, 'a', 'd');
-  state.player1VelocityY = updateVelocityFn(state.player1VelocityY, 's', 'w', aspect);
-  state.player2VelocityX = updateVelocityFn(state.player2VelocityX, 'ArrowLeft', 'ArrowRight');
-  state.player2VelocityY = updateVelocityFn(state.player2VelocityY, 'ArrowDown', 'ArrowUp', aspect);
+  state.player1Velocity = updateVelocityFn(state.player1Velocity, PLAYER_1_KEY_MAPPINGS);
+  state.player2Velocity = updateVelocityFn(state.player2Velocity, PLAYER_2_KEY_MAPPINGS);
 
   // update positions based on velocity
-  state.player1PosX += state.player1VelocityX;
-  state.player1PosY += state.player1VelocityY;
-  state.player2PosX += state.player2VelocityX;
-  state.player2PosY += state.player2VelocityY;
+  state.player1Pos = Geometry.vectorAddition(state.player1Pos, state.player1Velocity);
+  state.player2Pos = Geometry.vectorAddition(state.player2Pos, state.player2Velocity);
 
   const detectionResult = detectCollisionBetweenCircles(
-    { position: { x: state.player1PosX, y: state.player1PosY }, radius: config.CIRCLE_RADIUS },
-    { position: { x: state.player2PosX, y: state.player2PosY }, radius: config.CIRCLE_RADIUS },
+    { position: state.player1Pos, radius: config.CIRCLE_RADIUS },
+    { position: state.player2Pos, radius: config.CIRCLE_RADIUS },
     aspect
   );
   if (detectionResult) {
     const resolutionResult = resolveCollisionBetweenCircles(
-      { velocity: { x: state.player1VelocityX, y: state.player1VelocityY }, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
-      { velocity: { x: state.player2VelocityX, y: state.player2VelocityY }, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
+      { velocity: state.player1Velocity, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
+      { velocity: state.player2Velocity, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
       detectionResult.normal,
     );
     if (resolutionResult) {
-      state.player1VelocityX = resolutionResult.velocity1.x;
-      state.player1VelocityY = resolutionResult.velocity1.y;
-      state.player2VelocityX = resolutionResult.velocity2.x;
-      state.player2VelocityY = resolutionResult.velocity2.y;
+      state.player1Velocity = resolutionResult.velocity1;
+      state.player2Velocity = resolutionResult.velocity2;
     }
   }
 }
 
 /**
- * updates a single velocity component (x or y) with respect to user input, acceleration, and drag.
- * @param currentVelocity the component velocity value coming into this frame
- * @param maxVelocity the cap for the component velocity
+ * updates a given velocity) with respect to user input, acceleration, and drag.
+ * @param currentVelocity the velocity value coming into this frame
+ * @param maxSpeed the cap for the velocity's magnitute
+ * @param accelerationRate amount to update a velocity component by if correct key is pressed
+ * @param reverseAccelerationRate amount to update a velocity component by if correct key is pressed
+ *        and player is currently moving in the opposite direction
+ * @param dragRate amount to update velocity's magnitute by if no relevant key is pressed
+ * @param aspect the scale aspect of the canvas (width / height), to correct movement
+ * @param pressedKeys current frame capture of pressed keys
+ * @param keyMappings key mapping config for given player, to cross reference with pressedKeys
+ */
+function updateVelocity(
+  currentVelocity: Geometry.Vector,
+  maxSpeed: number,
+  accelerationRate: number,
+  reverseAccelerationRate: number,
+  dragRate: number,
+  aspect: number,
+  pressedKeys: KeysCapture,
+  keyMappings: KeyMappings,
+): Geometry.Vector {
+  let { x, y } = currentVelocity;
+  const xResult = updateComponentSpeed(
+    x,
+    accelerationRate,
+    reverseAccelerationRate,
+    pressedKeys,
+    keyMappings.left,
+    keyMappings.right,
+  );
+  const yResult = updateComponentSpeed(
+    y,
+    accelerationRate * aspect,
+    reverseAccelerationRate * aspect,
+    pressedKeys,
+    keyMappings.down,
+    keyMappings.up,
+  );
+  // if only one component changed, drag against the other one
+  x = xResult.speed;
+  y = yResult.speed;
+  if (xResult.noChange && !yResult.noChange && x !== 0) {
+    x = x > 0 ? Math.max(0, x - dragRate) : Math.min(0, x + dragRate);
+  } else if (yResult.noChange && !xResult.noChange && y !== 0) {
+    y = y > 0 ? Math.max(0, y - dragRate) : Math.min(0, y + dragRate);
+  } else if (xResult.noChange && yResult.noChange) {
+    // preserve direction by dragging against vector speed, rather than a single component's speed
+    const velocity = { x, y };
+    const speed = Geometry.length(velocity);
+    if (speed > 0) {
+      // drag rate applies to each component, so apply drag rate twice to overall speed
+      const newSpeed = Math.max(0, speed - dragRate * 2);
+      const newVelocity = Geometry.vectorMultiplication(velocity, newSpeed / speed);
+      x = newVelocity.x;
+      y = newVelocity.y;
+    }
+  }
+  {
+    // cap velocity's speed
+    const velocity = { x, y };
+    const speed = Geometry.length(velocity);
+    if (speed > maxSpeed) {
+      const newVelocity = Geometry.vectorMultiplication(velocity, maxSpeed / speed);
+      x = newVelocity.x;
+      y = newVelocity.y;
+    }
+  }
+  return { x, y };
+}
+
+/**
+ * updates a single velocity component (x or y) with respect to user input and acceleration.
+ * @param currentSpeed the component velocity value coming into this frame
  * @param accelerationRate amount to update velocity by if correct key is pressed
  * @param reverseAccelerationRate amount to update velocity by if correct key is pressed
  *        and player is currently moving in the opposite direction
- * @param dragRate amount to update velocity by if no relevant key is pressed
  * @param pressedKeys current frame capture of pressed keys
  * @param negativeKey keycode for movement in negative direction
  * @param positiveKey keycode for movement in positive direction
  */
-// TODO drag rate is currently liable to change velocity direction.
-//      this may be due to the fact that this function applies drag separately to each velocity component.
-//      it will have to consider both components in order to drag while preserving direction.
-function updateComponentVelocity(
-  currentVelocity: number,
-  maxVelocity: number,
+function updateComponentSpeed(
+  currentSpeed: number,
   accelerationRate: number,
   reverseAccelerationRate: number,
-  dragRate: number,
   pressedKeys: KeysCapture,
-  negativeKey: string,
-  positiveKey: string,
-): number {
-  let velocity = currentVelocity;
+  negativeKey: PressedKeys.Key,
+  positiveKey: PressedKeys.Key,
+): { speed: number, noChange: boolean } {
+  let speed = currentSpeed;
+  let noChange = false;
   const pressedKey = pressedKeys.latestPressed(negativeKey, positiveKey);
   if (pressedKey === negativeKey) {
-    if (velocity > 0) {
-      velocity -= reverseAccelerationRate;
+    if (speed > 0) {
+      speed -= reverseAccelerationRate;
     } else {
-      velocity -= accelerationRate;
+      speed -= accelerationRate;
     }
   } else if (pressedKey === positiveKey) {
-    if (velocity < 0) {
-      velocity += reverseAccelerationRate;
+    if (speed < 0) {
+      speed += reverseAccelerationRate;
     } else {
-      velocity += accelerationRate;
+      speed += accelerationRate;
     }
-  } else { // no relevant keys are pressed, so consider dragging to stop
-    if (currentVelocity > 0) {
-      velocity = Math.max(0, velocity - dragRate);
-    } else if (currentVelocity < 0) {
-      velocity = Math.min(0, velocity + dragRate);
-    }
+  } else {
+    noChange = true;
   }
-  // cap velocity
-  if (velocity > 0) {
-    return Math.min(velocity, maxVelocity);
-  } else if (velocity < 0) {
-    return Math.max(velocity, -maxVelocity);
-  }
-  return velocity;
+  return { speed, noChange };
 }
 
 function initGame() {
