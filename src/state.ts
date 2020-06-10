@@ -14,6 +14,9 @@ export type State = {
 
   player2Pos: Geometry.Point
   player2Velocity: Geometry.Vector
+
+  ballPos: Geometry.Point
+  ballVelocity: Geometry.Vector
 }
 
 export function getInitialState(): State {
@@ -27,5 +30,9 @@ export function getInitialState(): State {
 
     player2Pos: config.PLAYER_2_STARTING_POS,
     player2Velocity: { x: 0, y: 0 },
+
+    // centered in the screen
+    ballPos: { x: 0, y: 0 },
+    ballVelocity: { x: 0, y: 0 },
   };
 }

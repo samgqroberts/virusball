@@ -170,19 +170,22 @@ function drawWithProgram(
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, countedBuffer.vertexCount);
 }
 
+interface CircleDrawInfo extends Geometry.Circle {
+  color: Color
+}
+
 function drawCircle(
   gl: WebGLRenderingContext,
   programInfo: Shape2DProgramInfo,
   buffer: CountedVertexBuffer,
-  circlePos: Geometry.Point,
-  color: Color,
+  drawInfo: CircleDrawInfo,
 ): void {
   drawWithProgram(gl,
     programInfo,
     buffer,
-    circlePos,
-    config.CIRCLE_RADIUS,
-    color,
+    drawInfo.position,
+    drawInfo.radius,
+    drawInfo.color,
   )
 }
 
@@ -222,16 +225,33 @@ function drawScene(
   drawCircle(gl,
     circlePInfo,
     circleBuffers,
-    state.player1Pos,
-    config.PLAYER_1_COLOR,
+    {
+      position: state.player1Pos,
+      color: config.PLAYER_1_COLOR,
+      radius: config.PLAYER_CIRCLE_RADIUS,
+    },
   );
 
   // player2
   drawCircle(gl,
     circlePInfo,
     circleBuffers,
-    state.player2Pos,
-    config.PLAYER_2_COLOR
+    {
+      position: state.player2Pos,
+      color: config.PLAYER_2_COLOR,
+      radius: config.PLAYER_CIRCLE_RADIUS,
+    },
+  );
+
+  // ball
+  drawCircle(gl,
+    circlePInfo,
+    circleBuffers,
+    {
+      position: state.ballPos,
+      color: config.BALL_COLOR,
+      radius: config.BALL_CIRCLE_RADIUS,
+    }
   );
 
   // left goal post
@@ -272,6 +292,7 @@ function logFPS(state: State): void {
  *        mutated in-place.
  * @param aspect the scale aspect of the canvas (width / height), to correct movement
  */
+// TODO update ball position, detect collision with ball
 function updatePlayerPositions(state: State, aspect: number): void {
   const { PLAYER_ACCELERATION, PLAYER_REVERSE_ACCELERATION, PLAYER_DRAG, PLAYER_MAX_SPEED, PLAYER_1_KEY_MAPPINGS, PLAYER_2_KEY_MAPPINGS } = config;
   // PLAYER_ACCELERATION is measured per second, so multiply by how many seconds have passed
@@ -305,8 +326,8 @@ function updatePlayerPositions(state: State, aspect: number): void {
   state.player2Pos = Geometry.vectorAddition(state.player2Pos, state.player2Velocity);
 
   const detectionResult = Physics.detectCollisionBetweenCircles(
-    { position: state.player1Pos, radius: config.CIRCLE_RADIUS },
-    { position: state.player2Pos, radius: config.CIRCLE_RADIUS },
+    { position: state.player1Pos, radius: config.PLAYER_CIRCLE_RADIUS },
+    { position: state.player2Pos, radius: config.PLAYER_CIRCLE_RADIUS },
     aspect
   );
   if (detectionResult) {

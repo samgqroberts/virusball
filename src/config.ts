@@ -4,15 +4,16 @@ import { KeyMappings } from "./models";
 // a collection of global constants and configuration options
 
 export default {
-  CIRCLE_RADIUS: 0.1, // in clipspace, i think
+  PLAYER_CIRCLE_RADIUS: 0.1, // in clipspace, i think
+  BALL_CIRCLE_RADIUS: 0.05,
 
   // constants for drawing the goal semicircles
   SEMICIRCLE_ARC_RADIUS: 0.2, // of the outer edge of the semicircle arc
   SEMICIRCLE_ARC_WIDTH: 0.2, // proportion of semicircle outer radisu
   GOAL_OFFSET_X: 0.6, // where to place the goals along the x axis, distance from center
 
-  PLAYER_1_STARTING_POS: { x: -0.2, y: 0 },
-  PLAYER_2_STARTING_POS: { x: 0.2, y: 0 },
+  PLAYER_1_STARTING_POS: { x: -0.3, y: 0 },
+  PLAYER_2_STARTING_POS: { x: 0.3, y: 0 },
 
   PLAYER_1_COLOR: {
     red: 1.0,
@@ -25,6 +26,12 @@ export default {
     green: 0.0,
     blue: 1.0,
     alpha: 1.0
+  },
+  BALL_COLOR: {
+    red: 0.0,
+    green: 1.0,
+    blue: 0.0,
+    alpha: 1.0,
   },
 
   PLAYER_1_KEY_MAPPINGS: {
