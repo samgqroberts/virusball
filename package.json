@@ -5,7 +5,9 @@
   "main": "./src/index.ts",
   "scripts": {
     "build": "webpack --config webpack.config.js",
-    "start": "webpack-dev-server"
+    "start": "webpack-dev-server",
+    "test": "jest",
+    "test-watch": "jest --watch"
   },
   "repository": {
     "type": "git",
@@ -14,10 +16,13 @@
   "author": "Sam Roberts <samgqroberts@gmail.com>",
   "dependencies": {},
   "devDependencies": {
+    "@types/jest": "^26.0.0",
     "copy-webpack-plugin": "^5.0.0",
     "glslify-hex": "^2.1.1",
     "glslify-loader": "^2.0.0",
+    "jest": "^26.0.1",
     "raw-loader": "^4.0.1",
+    "ts-jest": "^26.1.0",
     "ts-loader": "^6.2.2",
     "typescript": "^3.9.5",
     "webpack": "^4.43.0",
