@@ -1,4 +1,3 @@
-import _ from 'lodash';
 
 // valid Key characters that come back from KeyboardEvent.key (incomplete list)
 export type Key
@@ -23,7 +22,7 @@ const keys: Key[] = [
 
 // array to keep track of key presses
 // must ensure that later-pressed keys have higher indexes
-const keysPressed: Key[] = [];
+let keysPressed: Key[] = [];
 
 document.addEventListener('keydown', (e) => {
   const key = e.key as Key;
@@ -33,7 +32,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('keyup', (e) => {
-  _.remove(keysPressed, (key) => key === e.key);
+  keysPressed = keysPressed.filter((key) => key !== e.key);
 });
 
 export type KeysCapture = {
