@@ -40,62 +40,6 @@ export interface BaseConfig {
   ONLY_DRAW_ONCE: boolean
 }
 
-export function getDefaultBaseConfig(): BaseConfig {
-  return {
-    PLAYER_CIRCLE_RADIUS: 0.05,
-    BALL_CIRCLE_RADIUS: 0.025,
-
-    SEMICIRCLE_ARC_RADIUS: 0.1,
-    SEMICIRCLE_ARC_WIDTH: 0.2,
-    GOAL_OFFSET_X: 0.2,
-
-    PLAYER_1_STARTING_POS: { x: 0.35, y: 0.5 },
-    PLAYER_2_STARTING_POS: { x: 0.65, y: 0.5 },
-
-    PLAYER_1_COLOR: {
-      red: 1.0,
-      green: 0.0,
-      blue: 0.0,
-      alpha: 1.0
-    },
-    PLAYER_2_COLOR: {
-      red: 0.0,
-      green: 0.0,
-      blue: 1.0,
-      alpha: 1.0
-    },
-    BALL_COLOR: {
-      red: 0.0,
-      green: 1.0,
-      blue: 0.0,
-      alpha: 1.0,
-    },
-
-    PLAYER_1_KEY_MAPPINGS: {
-      'left': 'a',
-      'up': 'w',
-      'right': 'd',
-      'down': 's',
-    },
-    PLAYER_2_KEY_MAPPINGS: {
-      'left': 'ArrowLeft',
-      'up': 'ArrowUp',
-      'right': 'ArrowRight',
-      'down': 'ArrowDown',
-    },
-
-    PLAYER_ACCELERATION: 0.01,
-    PLAYER_REVERSE_ACCELERATION: 0.02,
-    PLAYER_DRAG: 0.005,
-    PLAYER_MAX_SPEED: 0.0085,
-    PLAYER_RESTITUTION: 0.8,
-    PLAYER_MASS: 2,
-
-    LOG_FPS: false,
-    ONLY_DRAW_ONCE: false,
-  } as const;
-}
-
 /**
  * Many config parameters are specified as proportions of the width of the canvas.
  * Returns the pixel value of those proportions
@@ -120,7 +64,6 @@ function pointProportionsToPixels(point: Geometry.Point, dimensions: Dimensions)
 export interface Config extends BaseConfig {
   canvasDimensions: Dimensions
 }
-
 
 /**
  * Combines a {@link BaseConfig} object with the given canvas {@link Dimensions}.

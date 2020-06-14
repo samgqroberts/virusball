@@ -18,3 +18,8 @@ export interface Color {
   blue: number,
   alpha: number,
 }
+
+export enum CircleHalf {
+  LEFT,
+  RIGHT,
+}
