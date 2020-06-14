@@ -3,17 +3,17 @@ import { KeyMappings } from "./models";
 // config.ts
 // a collection of global constants and configuration options
 
-export default {
-  PLAYER_CIRCLE_RADIUS: 0.1, // in clipspace, i think
-  BALL_CIRCLE_RADIUS: 0.05,
+const config = {
+  PLAYER_CIRCLE_RADIUS: 0.05, // in percentage of width of canvas
+  BALL_CIRCLE_RADIUS: 0.025, // in percentage of width of canvas
 
   // constants for drawing the goal semicircles
-  SEMICIRCLE_ARC_RADIUS: 0.2, // of the outer edge of the semicircle arc
-  SEMICIRCLE_ARC_WIDTH: 0.2, // proportion of semicircle outer radisu
-  GOAL_OFFSET_X: 0.6, // where to place the goals along the x axis, distance from center
+  SEMICIRCLE_ARC_RADIUS: 0.1, // of the outer edge of the semicircle arc, in percentage of width of canvas
+  SEMICIRCLE_ARC_WIDTH: 0.1, // proportion of semicircle outer radius, in percentage of width of canvas
+  GOAL_OFFSET_X: 0.3, // where to place the goals along the x axis, distance from center, in percentage of width of canvas
 
-  PLAYER_1_STARTING_POS: { x: -0.3, y: 0 },
-  PLAYER_2_STARTING_POS: { x: 0.3, y: 0 },
+  PLAYER_1_STARTING_POS: { x: 0.35, y: 0 }, // in percentages of height / width of canvas
+  PLAYER_2_STARTING_POS: { x: 0.65, y: 0 }, // in percentages of height / width of canvas
 
   PLAYER_1_COLOR: {
     red: 1.0,
@@ -58,4 +58,8 @@ export default {
   // for debugging
   LOG_FPS: false,
   ONLY_DRAW_ONCE: false
-};
+} as const;
+
+export default config;
+
+export type Config = typeof config;

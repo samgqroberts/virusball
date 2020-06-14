@@ -464,8 +464,11 @@ function initGame() {
   const leftSemicircleArcBuffer = initSemicircleArcBuffer(gl, program, CircleHalf.LEFT, config.SEMICIRCLE_ARC_WIDTH);
   const rightSemicircleArcBuffer = initSemicircleArcBuffer(gl, program, CircleHalf.RIGHT, config.SEMICIRCLE_ARC_WIDTH);
 
+  const canvasWidth = gl.canvas.width;
+  const canvasHeight = gl.canvas.height;
+
   // initialize scene drawing / game engine variables
-  const state: State = getInitialState();
+  const state: State = getInitialState({ x: canvasWidth, y: canvasHeight });
   logFPS(state);
 
   // Draw the scene repeatedly

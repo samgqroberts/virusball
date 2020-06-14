@@ -1,7 +1,7 @@
 // state.ts
 // a collection of mutable game state
 
-import config from "./config";
+import { Config } from "./config";
 import * as Geometry from "./geometry";
 
 export type State = {
@@ -19,7 +19,12 @@ export type State = {
   ballVelocity: Geometry.Vector
 }
 
-export function getInitialState(): State {
+interface Dimensions {
+  x: number
+  y: number
+}
+
+export function getInitialState(config: Config, dimensions: Dimensions): State {
   return {
     frameCount: 0,
     previousFrameTimestamp: 0,
