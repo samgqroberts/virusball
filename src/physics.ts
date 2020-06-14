@@ -9,10 +9,7 @@ export type Manifold = {
 export function detectCollisionBetweenCircles(
   circle1: Geometry.Circle,
   circle2: Geometry.Circle,
-  aspect: number
 ): Manifold | undefined {
-  circle1 = Geometry.correctCircleAspect(circle1, aspect);
-  circle2 = Geometry.correctCircleAspect(circle2, aspect);
   // Vector from A to B
   const n: Geometry.Vector = Geometry.diffVector(circle1.position, circle2.position);
 

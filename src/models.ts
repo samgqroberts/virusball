@@ -6,3 +6,15 @@ export type KeyMappings = {
   right: PressedKeys.Key
   down: PressedKeys.Key
 }
+
+export interface Dimensions {
+  x: number
+  y: number
+}
+
+export interface Color {
+  red: number,
+  green: number,
+  blue: number,
+  alpha: number,
+}

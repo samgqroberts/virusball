@@ -1,6 +1,6 @@
-import config from './config';
+import * as cfg from './config';
 import * as Geometry from './geometry';
-import { KeyMappings } from './models';
+import { KeyMappings, Color, Dimensions } from './models';
 import * as Physics from './physics';
 import * as PressedKeys from './PressedKeys';
 import { KeysCapture } from "./PressedKeys";
@@ -17,7 +17,8 @@ enum CircleHalf {
 }
 
 // entrypoint to the game. defined below
-initGame();
+// TODO move all other definitions to different file
+initGame(cfg.getDefaultBaseConfig());
 
 function getAspect(gl: WebGLRenderingContext): number {
   return gl.canvas.width / gl.canvas.height;
@@ -126,14 +127,32 @@ function initSemicircleArcBuffer(
   return { buffer: vertexBuffer, vertexCount: vertices.length / DIMENSION };
 }
 
-type Color = {
-  red: number,
-  green: number,
-  blue: number,
-  alpha: number,
+/**
+ * Converts a value that's meant to me a proportion of some overall value (eg. of overall canvas width)
+ * from pixels to clipspace.
+ */
+function pixelScalarToClipspace(
+  pixelValue: number,
+  pixelValueMax: number,
+) {
+  // from x = 0 to x = width in pixels, we go from x = -1 to x = 1 in clipspace
+  // so overall width in clipspace is 2.
+  // do not correct by subtracting -1 because this is not tracking position, but rather proportion
+  return ((pixelValue * 2) / pixelValueMax);
+}
+
+function pixelPositionToClipspace(
+  pixelPos: Geometry.Point,
+  dimension: Dimensions,
+): Geometry.Point {
+  return {
+    x: pixelScalarToClipspace(pixelPos.x, dimension.x) - 1,
+    y: pixelScalarToClipspace(pixelPos.y, dimension.y) - 1,
+  };
 }
 
 function drawWithProgram(
+  config: cfg.Config,
   gl: WebGLRenderingContext,
   programInfo: Shape2DProgramInfo,
   countedBuffer: CountedVertexBuffer,
@@ -144,7 +163,13 @@ function drawWithProgram(
   const { program, attribLocations, uniformLocations } = programInfo;
   gl.useProgram(program);
 
-  const aspect = getAspect(gl);
+  // all values affecting position or size coming into this method are assumed to be in pixels
+  // we must convert them to clipspace
+  const dimensions = config.canvasDimensions;
+  // scale is tracking scale along with x-axis
+  const clipspaceScale = pixelScalarToClipspace(scale, dimensions.x);
+  const aspect = dimensions.x / dimensions.y;
+  const clipspacePosition: Geometry.Point = pixelPositionToClipspace(position, dimensions);
 
   // scale vector will convert the circle from an oval shape
   //   to a circle shape by changing the dimensions of the circle primitive
@@ -153,10 +178,11 @@ function drawWithProgram(
   //   yet canvas clipspace goes from -1 to 1 in x and y directions regardless.
   // scale vector will also change the size of the circle
   //   by multiplying the vector positions by CIRCLE_RADIUS
-  gl.uniform2f(uniformLocations.scaleVector, scale, aspect * scale);
+  gl.uniform2f(uniformLocations.scaleVector, clipspaceScale, aspect * clipspaceScale);
 
   // translation vector will move the circle along x and y axes
-  gl.uniform2f(uniformLocations.translationVector, position.x, position.y);
+  // must multiply y position by -1 because y pixel position considers 0 to be top of canvas and extend downward
+  gl.uniform2f(uniformLocations.translationVector, clipspacePosition.x, -1 * clipspacePosition.y);
 
   // the color vector... what could that do?
   gl.uniform4f(uniformLocations.colorVector, color.red, color.green, color.blue, color.alpha);
@@ -175,12 +201,15 @@ interface CircleDrawInfo extends Geometry.Circle {
 }
 
 function drawCircle(
+  config: cfg.Config,
   gl: WebGLRenderingContext,
   programInfo: Shape2DProgramInfo,
   buffer: CountedVertexBuffer,
   drawInfo: CircleDrawInfo,
 ): void {
-  drawWithProgram(gl,
+  drawWithProgram(
+    config,
+    gl,
     programInfo,
     buffer,
     drawInfo.position,
@@ -190,13 +219,16 @@ function drawCircle(
 }
 
 function drawSemicircleArc(
+  config: cfg.Config,
   gl: WebGLRenderingContext,
   programInfo: Shape2DProgramInfo,
   buffer: CountedVertexBuffer,
   position: Geometry.Point,
   color: Color,
 ): void {
-  drawWithProgram(gl,
+  drawWithProgram(
+    config,
+    gl,
     programInfo,
     buffer,
     position,
@@ -206,6 +238,7 @@ function drawSemicircleArc(
 }
 
 function drawScene(
+  config: cfg.Config,
   gl: WebGLRenderingContext,
   circlePInfo: Shape2DProgramInfo,
   circleBuffers: CountedVertexBuffer,
@@ -222,7 +255,9 @@ function drawScene(
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // player1
-  drawCircle(gl,
+  drawCircle(
+    config,
+    gl,
     circlePInfo,
     circleBuffers,
     {
@@ -233,7 +268,9 @@ function drawScene(
   );
 
   // player2
-  drawCircle(gl,
+  drawCircle(
+    config,
+    gl,
     circlePInfo,
     circleBuffers,
     {
@@ -244,7 +281,9 @@ function drawScene(
   );
 
   // ball
-  drawCircle(gl,
+  drawCircle(
+    config,
+    gl,
     circlePInfo,
     circleBuffers,
     {
@@ -255,18 +294,23 @@ function drawScene(
   );
 
   // left goal post
-  drawSemicircleArc(gl,
+  const centeredY = config.canvasDimensions.y / 2;
+  drawSemicircleArc(
+    config,
+    gl,
     circlePInfo,
     leftSemicircleArcBuffer,
-    { x: -config.GOAL_OFFSET_X, y: 0 },
+    { x: config.GOAL_OFFSET_X, y: centeredY },
     config.PLAYER_1_COLOR,
   );
 
   // right goal post
-  drawSemicircleArc(gl,
+  drawSemicircleArc(
+    config,
+    gl,
     circlePInfo,
     rightSemicircleArcBuffer,
-    { x: config.GOAL_OFFSET_X, y: 0 },
+    { x: config.canvasDimensions.x - config.GOAL_OFFSET_X, y: centeredY },
     config.PLAYER_2_COLOR,
   );
 }
@@ -276,7 +320,7 @@ function drawScene(
  * @param state the game state object. state is assumed to be mutable, with the reference passed
  *        in on initial function call being valid for the lifecycle of the game.
  */
-function logFPS(state: State): void {
+function logFPS(config: cfg.Config, state: State): void {
   if (config.LOG_FPS) {
     let previousFrameCount = 0;
     setInterval(() => {
@@ -292,8 +336,7 @@ function logFPS(state: State): void {
  *        mutated in-place.
  * @param aspect the scale aspect of the canvas (width / height), to correct movement
  */
-// TODO update ball position, detect collision with ball
-function updatePlayerPositions(state: State, aspect: number): void {
+function updatePlayerPositions(config: cfg.Config, state: State, aspect: number): void {
   const { PLAYER_ACCELERATION, PLAYER_REVERSE_ACCELERATION, PLAYER_DRAG, PLAYER_MAX_SPEED, PLAYER_1_KEY_MAPPINGS, PLAYER_2_KEY_MAPPINGS } = config;
   // PLAYER_ACCELERATION is measured per second, so multiply by how many seconds have passed
   //   to determine how much to change velocity
@@ -312,12 +355,12 @@ function updatePlayerPositions(state: State, aspect: number): void {
       acceleration,
       reverseAcceleration,
       drag,
-      aspect,
       keys,
       keyMappings
     );
 
   // update velocities
+  // TODO update ball velocity
   state.player1Velocity = updateVelocityFn(state.player1Velocity, PLAYER_1_KEY_MAPPINGS);
   state.player2Velocity = updateVelocityFn(state.player2Velocity, PLAYER_2_KEY_MAPPINGS);
 
@@ -325,10 +368,11 @@ function updatePlayerPositions(state: State, aspect: number): void {
   state.player1Pos = Geometry.vectorAddition(state.player1Pos, state.player1Velocity);
   state.player2Pos = Geometry.vectorAddition(state.player2Pos, state.player2Velocity);
 
+  // TODO detect collision with ball
+  // TODO detect collision with goal posts
   const detectionResult = Physics.detectCollisionBetweenCircles(
     { position: state.player1Pos, radius: config.PLAYER_CIRCLE_RADIUS },
     { position: state.player2Pos, radius: config.PLAYER_CIRCLE_RADIUS },
-    aspect
   );
   if (detectionResult) {
     const resolutionResult = Physics.resolveCollisionBetweenCircles(
@@ -344,7 +388,7 @@ function updatePlayerPositions(state: State, aspect: number): void {
 }
 
 /**
- * updates a given velocity) with respect to user input, acceleration, and drag.
+ * updates a given velocity with respect to user input, acceleration, and drag.
  * @param currentVelocity the velocity value coming into this frame
  * @param maxSpeed the cap for the velocity's magnitute
  * @param accelerationRate amount to update a velocity component by if correct key is pressed
@@ -361,7 +405,6 @@ function updateVelocity(
   accelerationRate: number,
   reverseAccelerationRate: number,
   dragRate: number,
-  aspect: number,
   pressedKeys: KeysCapture,
   keyMappings: KeyMappings,
 ): Geometry.Vector {
@@ -376,11 +419,11 @@ function updateVelocity(
   );
   const yResult = updateComponentSpeed(
     y,
-    accelerationRate * aspect,
-    reverseAccelerationRate * aspect,
+    accelerationRate,
+    reverseAccelerationRate,
     pressedKeys,
+    keyMappings.up, // pressing up makes the player visibly go up, but that is negative in the y-direction
     keyMappings.down,
-    keyMappings.up,
   );
   // if only one component changed, drag against the other one
   x = xResult.speed;
@@ -453,8 +496,14 @@ function updateComponentSpeed(
   return { speed, noChange };
 }
 
-function initGame() {
+function initGame(baseConfig: cfg.BaseConfig) {
   const gl = getWebglContext('canvas');
+
+  const dimensions: Dimensions = { x: gl.canvas.width, y: gl.canvas.height };
+  const config = cfg.configWithPixelValues(baseConfig, dimensions);
+
+  // for debugging: attach the config objects to window
+  Object.assign(window, { baseConfig, config });
 
   // initialize everything needed for the circle program
   const shape2dProgram = initShaderProgramOrFail(gl, shape2dVsSource, shape2dFsSource);
@@ -465,8 +514,8 @@ function initGame() {
   const rightSemicircleArcBuffer = initSemicircleArcBuffer(gl, program, CircleHalf.RIGHT, config.SEMICIRCLE_ARC_WIDTH);
 
   // initialize scene drawing / game engine variables
-  const state: State = getInitialState();
-  logFPS(state);
+  const state: State = getInitialState(config);
+  logFPS(config, state);
 
   // Draw the scene repeatedly
   function tick(now: number) {
@@ -474,9 +523,14 @@ function initGame() {
     state.previousFrameTimestamp = state.currentFrameTimestamp;
     state.currentFrameTimestamp = now * 0.001; // convert to seconds
 
-    updatePlayerPositions(state, getAspect(gl));
+    updatePlayerPositions(config, state, getAspect(gl));
 
-    drawScene(gl,
+    // for debugging: attach the state object to window
+    Object.assign(window, { state });
+
+    drawScene(
+      config,
+      gl,
       shape2dProgramInfo,
       circleBuffer,
       leftSemicircleArcBuffer,
@@ -485,10 +539,10 @@ function initGame() {
     );
 
     if (!config.ONLY_DRAW_ONCE) {
-      requestAnimationFrame((now: number) => tick(now));
+      requestAnimationFrame(tick);
     }
   }
 
   // start the scene drawing loop
-  requestAnimationFrame((now: number) => tick(now));
+  requestAnimationFrame(tick);
 }
