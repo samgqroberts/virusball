@@ -339,41 +339,77 @@ function updatePlayerPositions(config: cfg.Config, state: State, aspect: number)
   const keys = PressedKeys.capture();
 
   // wrapper to capture current-frame constants
-  const updateVelocityFn = (velocity: Geometry.Vector, keyMappings: KeyMappings) =>
+  const updateVelocityFn = (velocity: Geometry.Vector, keyMappings?: KeyMappings) =>
     updateVelocity(
       velocity,
       PLAYER_MAX_SPEED,
       acceleration,
       reverseAcceleration,
       drag,
-      keys,
-      keyMappings
+      keyMappings && {
+        pressedKeys: keys,
+        keyMappings,
+      },
     );
 
   // update velocities
-  // TODO update ball velocity
   state.player1Velocity = updateVelocityFn(state.player1Velocity, PLAYER_1_KEY_MAPPINGS);
   state.player2Velocity = updateVelocityFn(state.player2Velocity, PLAYER_2_KEY_MAPPINGS);
+  state.ballVelocity = updateVelocityFn(state.ballVelocity);
 
   // update positions based on velocity
   state.player1Pos = Geometry.vectorAddition(state.player1Pos, state.player1Velocity);
   state.player2Pos = Geometry.vectorAddition(state.player2Pos, state.player2Velocity);
+  state.ballPos = Geometry.vectorAddition(state.ballPos, state.ballVelocity);
 
-  // TODO detect collision with ball
   // TODO detect collision with goal posts
-  const detectionResult = Physics.detectCollisionBetweenCircles(
+  // TODO eliminate copy-pasta
+  // player on player
+  const p1p2DetectionResult = Physics.detectCollisionBetweenCircles(
     { position: state.player1Pos, radius: config.PLAYER_CIRCLE_RADIUS },
     { position: state.player2Pos, radius: config.PLAYER_CIRCLE_RADIUS },
   );
-  if (detectionResult) {
+  if (p1p2DetectionResult) {
     const resolutionResult = Physics.resolveCollisionBetweenCircles(
       { velocity: state.player1Velocity, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
       { velocity: state.player2Velocity, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
-      detectionResult.normal,
+      p1p2DetectionResult.normal,
     );
     if (resolutionResult) {
       state.player1Velocity = resolutionResult.velocity1;
       state.player2Velocity = resolutionResult.velocity2;
+    }
+  }
+  // player1 on ball
+  const p1BallDetectionResult = Physics.detectCollisionBetweenCircles(
+    { position: state.player1Pos, radius: config.PLAYER_CIRCLE_RADIUS },
+    { position: state.ballPos, radius: config.BALL_CIRCLE_RADIUS },
+  );
+  if (p1BallDetectionResult) {
+    const resolutionResult = Physics.resolveCollisionBetweenCircles(
+      { velocity: state.player1Velocity, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
+      { velocity: state.ballVelocity, restitution: config.BALL_RESTITUTION, mass: config.BALL_MASS },
+      p1BallDetectionResult.normal,
+    );
+    if (resolutionResult) {
+      state.player1Velocity = resolutionResult.velocity1;
+      state.ballVelocity = resolutionResult.velocity2;
+    }
+  }
+  // player2 on ball
+  const p2BallDetectionResult = Physics.detectCollisionBetweenCircles(
+    { position: state.player2Pos, radius: config.PLAYER_CIRCLE_RADIUS },
+    { position: state.ballPos, radius: config.BALL_CIRCLE_RADIUS },
+  );
+  if (p2BallDetectionResult) {
+    const resolutionResult = Physics.resolveCollisionBetweenCircles(
+      { velocity: state.player2Velocity, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
+      { velocity: state.ballVelocity, restitution: config.BALL_RESTITUTION, mass: config.BALL_MASS },
+      p2BallDetectionResult.normal,
+    );
+    if (resolutionResult) {
+      state.player2Velocity = resolutionResult.velocity1;
+      state.ballVelocity = resolutionResult.velocity2;
     }
   }
 }
@@ -396,25 +432,31 @@ function updateVelocity(
   accelerationRate: number,
   reverseAccelerationRate: number,
   dragRate: number,
-  pressedKeys: KeysCapture,
-  keyMappings: KeyMappings,
+  keys?: {
+    pressedKeys: KeysCapture
+    keyMappings: KeyMappings,
+  }
 ): Geometry.Vector {
   let { x, y } = currentVelocity;
   const xResult = updateComponentSpeed(
     x,
     accelerationRate,
     reverseAccelerationRate,
-    pressedKeys,
-    keyMappings.left,
-    keyMappings.right,
+    keys && {
+      pressedKeys: keys.pressedKeys,
+      negativeKey: keys.keyMappings.left,
+      positiveKey: keys.keyMappings.right,
+    }
   );
   const yResult = updateComponentSpeed(
     y,
     accelerationRate,
     reverseAccelerationRate,
-    pressedKeys,
-    keyMappings.up, // pressing up makes the player visibly go up, but that is negative in the y-direction
-    keyMappings.down,
+    keys && {
+      pressedKeys: keys.pressedKeys,
+      negativeKey: keys.keyMappings.up, // pressing up makes the player visibly go up, but that is negative in the y-direction
+      positiveKey: keys.keyMappings.down,
+    }
   );
   // if only one component changed, drag against the other one
   x = xResult.speed;
@@ -462,24 +504,31 @@ function updateComponentSpeed(
   currentSpeed: number,
   accelerationRate: number,
   reverseAccelerationRate: number,
-  pressedKeys: KeysCapture,
-  negativeKey: PressedKeys.Key,
-  positiveKey: PressedKeys.Key,
+  keys?: {
+    pressedKeys: KeysCapture,
+    negativeKey: PressedKeys.Key,
+    positiveKey: PressedKeys.Key,
+  }
 ): { speed: number, noChange: boolean } {
   let speed = currentSpeed;
   let noChange = false;
-  const pressedKey = pressedKeys.latestPressed(negativeKey, positiveKey);
-  if (pressedKey === negativeKey) {
-    if (speed > 0) {
-      speed -= reverseAccelerationRate;
+  if (keys) {
+    const { pressedKeys, negativeKey, positiveKey } = keys;
+    const pressedKey = pressedKeys.latestPressed(negativeKey, positiveKey);
+    if (pressedKey === negativeKey) {
+      if (speed > 0) {
+        speed -= reverseAccelerationRate;
+      } else {
+        speed -= accelerationRate;
+      }
+    } else if (pressedKey === positiveKey) {
+      if (speed < 0) {
+        speed += reverseAccelerationRate;
+      } else {
+        speed += accelerationRate;
+      }
     } else {
-      speed -= accelerationRate;
-    }
-  } else if (pressedKey === positiveKey) {
-    if (speed < 0) {
-      speed += reverseAccelerationRate;
-    } else {
-      speed += accelerationRate;
+      noChange = true;
     }
   } else {
     noChange = true;

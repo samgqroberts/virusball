@@ -32,8 +32,12 @@ export interface BaseConfig {
   PLAYER_REVERSE_ACCELERATION: number
   PLAYER_DRAG: number
   PLAYER_MAX_SPEED: number
+
+  // physics constants
   PLAYER_RESTITUTION: number
   PLAYER_MASS: number
+  BALL_RESTITUTION: number
+  BALL_MASS: number
 
   // for debugging
   LOG_FPS: boolean

@@ -3,7 +3,6 @@
 
 import * as config from "./config";
 import * as geometry from "./geometry";
-import { Dimensions } from "./models";
 
 export type State = {
   frameCount: number,
@@ -39,6 +38,6 @@ export function getInitialState(cfg: config.Config): State {
 
     // centered in the screen
     ballPos: { x: cfg.canvasDimensions.x / 2, y: cfg.canvasDimensions.y / 2 },
-    ballVelocity: { x: cfg.canvasDimensions.x / 2, y: cfg.canvasDimensions.y / 2 },
+    ballVelocity: { x: 0, y: 0 },
   };
 }
