@@ -1,9 +1,13 @@
-import { detectCollisionBetweenCircles } from "./physics";
+import { detectCollisionBetweenCircles, detectCollisionBetweenCircleAndSemicircleArc } from "./physics";
 import * as geometry from './geometry'
+import { CircleHalf } from "./models";
 
 describe('physics', () => {
   function circle(x: number, y: number, radius: number): geometry.Circle {
     return { position: { x, y, }, radius };
+  }
+  function semicircleArc(x: number, y: number, radius: number, arcWidth: number, circleHalf: CircleHalf): geometry.SemicircleArc {
+    return { position: { x, y }, radius, arcWidth, circleHalf };
   }
 
   describe(detectCollisionBetweenCircles, () => {
@@ -41,5 +45,35 @@ describe('physics', () => {
     });
   });
 
-  // describe();
+  describe(detectCollisionBetweenCircleAndSemicircleArc, () => {
+    test.only('case 1', () => {
+      const manifold = detectCollisionBetweenCircleAndSemicircleArc(
+        circle(-3, 2, 0.5),
+        semicircleArc(-1, 0, 1, 0.5, CircleHalf.LEFT),
+      );
+      expect(manifold).toBeUndefined();
+    });
+    test.only('case 2', () => {
+      const manifold = detectCollisionBetweenCircleAndSemicircleArc(
+        circle(-3, 2, 2),
+        semicircleArc(-1, 0, 1, 0.5, CircleHalf.LEFT),
+      );
+      
+      expect(manifold).toBeDefined();
+      expect(manifold?.normal.x).toBeCloseTo(0.707);
+      expect(manifold?.normal.y).toBeCloseTo(-0.707);
+      expect(manifold?.penetration).toBeCloseTo(0.1716);
+    });
+    test.only('case 3', () => {
+      const manifold = detectCollisionBetweenCircleAndSemicircleArc(
+        circle(-3, -2, 2),
+        semicircleArc(-1, 0, 1, 0.5, CircleHalf.LEFT),
+      );
+      
+      expect(manifold).toBeDefined();
+      expect(manifold?.normal.x).toBeCloseTo(0.707);
+      expect(manifold?.normal.y).toBeCloseTo(0.707);
+      expect(manifold?.penetration).toBeCloseTo(0.1716);
+    });
+  });
 });

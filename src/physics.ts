@@ -1,4 +1,5 @@
 import * as Geometry from './geometry';
+import { CircleHalf } from './models';
 
 /** An object describing a collision between two objects */
 export type Manifold = {
@@ -39,6 +40,25 @@ export function detectCollisionBetweenCircles(
     penetration: circle1.radius,
     normal: { x: 1, y: 2 },
   }
+}
+
+// TODO complete implementation (on non arc side)
+export function detectCollisionBetweenCircleAndSemicircleArc(
+  circle: Geometry.Circle,
+  semicircleArc: Geometry.SemicircleArc
+): Manifold | undefined {
+  // depending on where the circle is in relation to the semicircle arc, we will detect collisions differently
+  const diffVector: Geometry.Vector = Geometry.diffVector(semicircleArc.position, circle.position);
+  const angle = Geometry.vectorAngle(diffVector);
+  const quadrant = Geometry.angleQuadrant(angle);
+  const circleOnLeft = quadrant === 1 || quadrant === 4;
+  const circleOnCircleArcSide
+    = circleOnLeft && semicircleArc.circleHalf === CircleHalf.LEFT
+    || !circleOnLeft && semicircleArc.circleHalf === CircleHalf.RIGHT;
+  if (circleOnCircleArcSide) {
+    return detectCollisionBetweenCircles(circle, { position: semicircleArc.position, radius: semicircleArc.radius });
+  }
+  return undefined;
 }
 
 export type CollisionInfo = {

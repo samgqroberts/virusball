@@ -1,3 +1,5 @@
+import { CircleHalf } from "./models";
+
 export function degreeToRadian(degree: number): number {
   return degree * Math.PI / 180;
 }
@@ -13,6 +15,23 @@ export type Circle = {
   position: Point,
   radius: number,
 };
+
+export interface SemicircleArc extends Circle {
+  arcWidth: number // value from 0 to 1, proportion of circle radius
+  circleHalf: CircleHalf
+}
+
+export function vectorAngle(vector: Vector): number {
+  return Math.atan(vector.y / vector.x);
+}
+
+export function angleQuadrant(angle: number): 1 | 2 | 3 | 4 {
+  const normalized = angle % (Math.PI * 2);
+  if (angle < Math.PI / 2) return 1;
+  if (angle < Math.PI) return 2;
+  if (angle < Math.PI + Math.PI / 2) return 3;
+  return 4;
+}
 
 export function diffVector(point1: Point, point2: Point): Vector {
   return { x: point2.x - point1.x, y: point2.y - point1.y };
