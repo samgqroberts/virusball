@@ -38,6 +38,7 @@ export interface BaseConfig {
   PLAYER_MASS: number
   BALL_RESTITUTION: number
   BALL_MASS: number
+  GOAL_RESTITUTION: number
 
   // for debugging
   LOG_FPS: boolean

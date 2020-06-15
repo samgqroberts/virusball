@@ -46,14 +46,14 @@ describe('physics', () => {
   });
 
   describe(detectCollisionBetweenCircleAndSemicircleArc, () => {
-    test.only('case 1', () => {
+    test('case 1', () => {
       const manifold = detectCollisionBetweenCircleAndSemicircleArc(
         circle(-3, 2, 0.5),
         semicircleArc(-1, 0, 1, 0.5, CircleHalf.LEFT),
       );
       expect(manifold).toBeUndefined();
     });
-    test.only('case 2', () => {
+    test('case 2', () => {
       const manifold = detectCollisionBetweenCircleAndSemicircleArc(
         circle(-3, 2, 2),
         semicircleArc(-1, 0, 1, 0.5, CircleHalf.LEFT),
@@ -64,7 +64,7 @@ describe('physics', () => {
       expect(manifold?.normal.y).toBeCloseTo(-0.707);
       expect(manifold?.penetration).toBeCloseTo(0.1716);
     });
-    test.only('case 3', () => {
+    test('case 3', () => {
       const manifold = detectCollisionBetweenCircleAndSemicircleArc(
         circle(-3, -2, 2),
         semicircleArc(-1, 0, 1, 0.5, CircleHalf.LEFT),
@@ -74,6 +74,13 @@ describe('physics', () => {
       expect(manifold?.normal.x).toBeCloseTo(0.707);
       expect(manifold?.normal.y).toBeCloseTo(0.707);
       expect(manifold?.penetration).toBeCloseTo(0.1716);
+    });
+    test('case 4 - would collide if arcWidth was bigger', () => {
+      const manifold = detectCollisionBetweenCircleAndSemicircleArc(
+        circle(0, 0, 1),
+        semicircleArc(-1, 0, 2, 0.1, CircleHalf.LEFT),
+      );
+      expect(manifold).toBeUndefined();
     });
   });
 });

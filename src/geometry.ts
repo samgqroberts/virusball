@@ -25,11 +25,12 @@ export function vectorAngle(vector: Vector): number {
   return Math.atan(vector.y / vector.x);
 }
 
+// TODO vectorAngle and angleQuadrant are funky
 export function angleQuadrant(angle: number): 1 | 2 | 3 | 4 {
-  const normalized = angle % (Math.PI * 2);
-  if (angle < Math.PI / 2) return 1;
-  if (angle < Math.PI) return 2;
-  if (angle < Math.PI + Math.PI / 2) return 3;
+  const normalized = (angle + (Math.PI * 2)) % (Math.PI * 2);
+  if (normalized < Math.PI / 2) return 1;
+  if (normalized < Math.PI) return 2;
+  if (normalized < Math.PI + Math.PI / 2) return 3;
   return 4;
 }
 

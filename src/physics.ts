@@ -42,7 +42,6 @@ export function detectCollisionBetweenCircles(
   }
 }
 
-// TODO complete implementation (on non arc side)
 export function detectCollisionBetweenCircleAndSemicircleArc(
   circle: Geometry.Circle,
   semicircleArc: Geometry.SemicircleArc
@@ -52,12 +51,31 @@ export function detectCollisionBetweenCircleAndSemicircleArc(
   const angle = Geometry.vectorAngle(diffVector);
   const quadrant = Geometry.angleQuadrant(angle);
   const circleOnLeft = quadrant === 1 || quadrant === 4;
-  const circleOnCircleArcSide
-    = circleOnLeft && semicircleArc.circleHalf === CircleHalf.LEFT
-    || !circleOnLeft && semicircleArc.circleHalf === CircleHalf.RIGHT;
+  const circleOnCircleArcSide = circleOnLeft === (semicircleArc.circleHalf === CircleHalf.LEFT)
+  // console.log({ quadrant })
   if (circleOnCircleArcSide) {
     return detectCollisionBetweenCircles(circle, { position: semicircleArc.position, radius: semicircleArc.radius });
   }
+  // check for collisions with the 4 hard corners
+  const cornerYs = [
+    semicircleArc.position.y + semicircleArc.radius,
+    semicircleArc.position.y - semicircleArc.radius,
+    semicircleArc.position.y + (semicircleArc.radius * (1 - semicircleArc.arcWidth)),
+    semicircleArc.position.y - (semicircleArc.radius * (1 - semicircleArc.arcWidth)),
+  ];
+  const cornerCollision = cornerYs.map(y => {
+    const thisCornerCollision = detectCollisionBetweenCircles(
+      circle,
+      { position: { x: semicircleArc.position.x, y }, radius: Number.EPSILON }
+    );
+    console.log({ y, thisCornerCollision });
+    return thisCornerCollision;
+  }).find(collision => !!collision);
+  if (cornerCollision) {
+    console.log({ cornerCollision });
+    return cornerCollision;
+  }
+
   return undefined;
 }
 
