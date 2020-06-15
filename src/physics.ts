@@ -13,10 +13,10 @@ export function detectCollisionBetweenCircles(
   // Vector from A to B
   const n: Geometry.Vector = Geometry.diffVector(circle1.position, circle2.position);
 
-  let r: number = circle1.radius + circle2.radius
-  r *= r;
+  const radius = circle1.radius + circle2.radius;
+  const radiusSquared = radius * radius;
 
-  if (Geometry.lengthSquared(n) > r) {
+  if (Geometry.lengthSquared(n) > radiusSquared) {
     return undefined;
   }
 
@@ -27,7 +27,7 @@ export function detectCollisionBetweenCircles(
   if (d !== 0) {
     return {
       // Distance is difference between radius and distance
-      penetration: r - d,
+      penetration: radius - d,
       // Points from A to B, and is a unit vector
       normal: Geometry.normalize(n),
     };
