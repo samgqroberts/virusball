@@ -1,3 +1,5 @@
+import { CircleHalf } from "./models";
+
 export function degreeToRadian(degree: number): number {
   return degree * Math.PI / 180;
 }
@@ -13,6 +15,99 @@ export type Circle = {
   position: Point,
   radius: number,
 };
+
+export interface SemicircleArc extends Circle {
+  arcWidth: number // value from 0 to 1, proportion of circle radius
+  circleHalf: CircleHalf
+}
+
+
+// thank you https://stackoverflow.com/questions/12219802/a-javascript-function-that-returns-the-x-y-points-of-intersection-between-two-ci
+export function pointsOfIntersectionBetweenTwoCircles(
+  circle1: Circle,
+  circle2: Circle,
+): false | [Point, Point] {
+  const { position: { x: x0, y: y0 }, radius: r0 } = circle1;
+  const { position: { x: x1, y: y1 }, radius: r1 } = circle2;
+  let a, dx, dy, d, h, rx, ry;
+  let x2, y2;
+
+  /* dx and dy are the vertical and horizontal distances between
+   * the circle centers.
+   */
+  dx = x1 - x0;
+  dy = y1 - y0;
+
+  /* Determine the straight-line distance between the centers. */
+  d = Math.sqrt((dy * dy) + (dx * dx));
+
+  /* Check for solvability. */
+  if (d > (r0 + r1)) {
+    /* no solution. circles do not intersect. */
+    return false;
+  }
+  if (d < Math.abs(r0 - r1)) {
+    /* no solution. one circle is contained in the other */
+    return false;
+  }
+
+  /* 'point 2' is the point where the line through the circle
+   * intersection points crosses the line between the circle
+   * centers.  
+   */
+
+  /* Determine the distance from point 0 to point 2. */
+  a = ((r0 * r0) - (r1 * r1) + (d * d)) / (2.0 * d);
+
+  /* Determine the coordinates of point 2. */
+  x2 = x0 + (dx * a / d);
+  y2 = y0 + (dy * a / d);
+
+  /* Determine the distance from point 2 to either of the
+   * intersection points.
+   */
+  h = Math.sqrt((r0 * r0) - (a * a));
+
+  /* Now determine the offsets of the intersection points from
+   * point 2.
+   */
+  rx = -dy * (h / d);
+  ry = dx * (h / d);
+
+  /* Determine the absolute intersection points. */
+  var xi = x2 + rx;
+  var xi_prime = x2 - rx;
+  var yi = y2 + ry;
+  var yi_prime = y2 - ry;
+
+  return [{ x: xi, y: yi }, { x: xi_prime, y: yi_prime }];
+}
+
+function sq(value: number): number {
+  return value * value;
+}
+
+export function innerCircleOfSemicircleArc(semicircleArc: SemicircleArc): Circle {
+  return {
+    position: semicircleArc.position,
+    radius: (semicircleArc.radius * (1 - semicircleArc.arcWidth)),
+  };
+}
+
+export function distanceBetweenPointAndCircle(
+  point: Point,
+  circle: Circle,
+): number {
+  return Math.abs(circle.radius - Math.sqrt(sq(circle.position.x - point.x) + (circle.position.y - point.y)));
+}
+
+export function vectorQuadrant(vector: Vector): 1 | 2 | 3 | 4 {
+  const { x, y } = vector;
+  if (x >= 0 && y >= 0) return 1;
+  if (x >= 0 && y < 0) return 4;
+  if (x < 0 && y >= 0) return 2;
+  return 3;
+}
 
 export function diffVector(point1: Point, point2: Point): Vector {
   return { x: point2.x - point1.x, y: point2.y - point1.y };

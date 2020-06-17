@@ -8,7 +8,7 @@ const baseConfig: cfg.BaseConfig = {
 
   SEMICIRCLE_ARC_RADIUS: 0.1,
   SEMICIRCLE_ARC_WIDTH: 0.2,
-  GOAL_OFFSET_X: 0.2,
+  GOAL_OFFSET_X: 0.3,
 
   PLAYER_1_STARTING_POS: { x: 0.35, y: 0.5 },
   PLAYER_2_STARTING_POS: { x: 0.65, y: 0.5 },
@@ -54,6 +54,7 @@ const baseConfig: cfg.BaseConfig = {
   PLAYER_MASS: 10,
   BALL_RESTITUTION: 0.9,
   BALL_MASS: 1.2,
+  GOAL_RESTITUTION: 0.5,
 
   LOG_FPS: false,
   ONLY_DRAW_ONCE: false,

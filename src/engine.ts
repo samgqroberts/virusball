@@ -291,7 +291,7 @@ function drawScene(
     gl,
     circlePInfo,
     leftSemicircleArcBuffer,
-    { x: config.GOAL_OFFSET_X, y: centeredY },
+    { x: config.canvasDimensions.x / 2 - config.GOAL_OFFSET_X, y: centeredY },
     config.PLAYER_1_COLOR,
   );
 
@@ -301,7 +301,7 @@ function drawScene(
     gl,
     circlePInfo,
     rightSemicircleArcBuffer,
-    { x: config.canvasDimensions.x - config.GOAL_OFFSET_X, y: centeredY },
+    { x: config.canvasDimensions.x / 2 + config.GOAL_OFFSET_X, y: centeredY },
     config.PLAYER_2_COLOR,
   );
 }
@@ -357,11 +357,6 @@ function updatePlayerPositions(config: cfg.Config, state: State, aspect: number)
   state.player2Velocity = updateVelocityFn(state.player2Velocity, PLAYER_2_KEY_MAPPINGS);
   state.ballVelocity = updateVelocityFn(state.ballVelocity);
 
-  // update positions based on velocity
-  state.player1Pos = Geometry.vectorAddition(state.player1Pos, state.player1Velocity);
-  state.player2Pos = Geometry.vectorAddition(state.player2Pos, state.player2Velocity);
-  state.ballPos = Geometry.vectorAddition(state.ballPos, state.ballVelocity);
-
   // TODO detect collision with goal posts
   // TODO eliminate copy-pasta
   // player on player
@@ -412,6 +407,35 @@ function updatePlayerPositions(config: cfg.Config, state: State, aspect: number)
       state.ballVelocity = resolutionResult.velocity2;
     }
   }
+  // player1 on left goal post
+  const p1LeftGoalDetectionResult = Physics.detectCollisionBetweenCircleAndSemicircleArc(
+    { position: state.player1Pos, radius: config.PLAYER_CIRCLE_RADIUS },
+    {
+      position: {
+        x: (config.canvasDimensions.x / 2) - config.GOAL_OFFSET_X,
+        y: config.canvasDimensions.y / 2,
+      },
+      radius: config.SEMICIRCLE_ARC_RADIUS,
+      arcWidth: config.SEMICIRCLE_ARC_WIDTH,
+      circleHalf: CircleHalf.LEFT,
+    },
+  );
+  if (p1LeftGoalDetectionResult) {
+    const resolutionResult = Physics.resolveCollisionBetweenCircles(
+      { velocity: state.player1Velocity, restitution: config.PLAYER_RESTITUTION, mass: config.PLAYER_MASS },
+      { velocity: { x: 0, y: 0 }, restitution: config.GOAL_RESTITUTION, mass: Number.MAX_SAFE_INTEGER },
+      p1LeftGoalDetectionResult.normal,
+    );
+    if (resolutionResult) {
+      state.player1Velocity = resolutionResult.velocity1;
+    }
+  }
+  // TODO add collision detection for other entities and goal posts
+
+  // update positions based on velocity
+  state.player1Pos = Geometry.vectorAddition(state.player1Pos, state.player1Velocity);
+  state.player2Pos = Geometry.vectorAddition(state.player2Pos, state.player2Velocity);
+  state.ballPos = Geometry.vectorAddition(state.ballPos, state.ballVelocity);
 }
 
 /**
